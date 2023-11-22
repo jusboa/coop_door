@@ -23,16 +23,14 @@ class DcMotorDriveTest(unittest.TestCase):
             Pin_mock.assert_has_calls(calls)
 
     def test_forward(self):
-        with patch('coop_door.coop_door.dcmotor_drive.Pin') as Pin_mock:
-            self.motor.forward()
-            self.pin0_mock.value.assert_called_once_with(1)
-            self.pin1_mock.value.assert_called_once_with(0)
+        self.motor.forward()
+        self.pin0_mock.value.assert_called_once_with(1)
+        self.pin1_mock.value.assert_called_once_with(0)
     
     def test_backward(self):
-        with patch('coop_door.coop_door.dcmotor_drive.Pin') as Pin_mock:
-            self.motor.backward()
-            self.pin0_mock.value.assert_called_once_with(0)
-            self.pin1_mock.value.assert_called_once_with(1)
+        self.motor.backward()
+        self.pin0_mock.value.assert_called_once_with(0)
+        self.pin1_mock.value.assert_called_once_with(1)
 
 if __name__ == '__main__':
 	unittest.main()
