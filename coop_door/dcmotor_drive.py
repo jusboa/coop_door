@@ -33,9 +33,9 @@ class Motor():
         elif (self.pin0_value == 0
               and self.pin1_value == 1):
             return -1
-        elif (self.is_off()):
+        elif (not self.is_running()):
             return 0
 
-    def is_off(self):
+    def is_running(self):
         return (self.pin0_value
-                == self.pin1_value)
+                != self.pin1_value)
