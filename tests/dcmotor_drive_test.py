@@ -22,15 +22,48 @@ class DcMotorDriveTest(unittest.TestCase):
             calls = [call(0, 33), call(1, 33)]
             Pin_mock.assert_has_calls(calls)
 
-    def test_forward(self):
+    def test_drive_forward(self):
         self.motor.forward()
         self.pin0_mock.value.assert_called_once_with(1)
         self.pin1_mock.value.assert_called_once_with(0)
     
-    def test_backward(self):
+    def test_drive_backward(self):
         self.motor.backward()
         self.pin0_mock.value.assert_called_once_with(0)
         self.pin1_mock.value.assert_called_once_with(1)
+        
+    def test_stop_motor(self):
+        self.motor.forward()
+        self.pin0_mock.value.reset_mock()
+        self.pin1_mock.value.reset_mock()
+        self.motor.stop()
+        self.pin0_mock.value.assert_called_once_with(0)
+        self.pin1_mock.value.assert_called_once_with(0)
+        self.motor.backward()
+        self.pin0_mock.value.reset_mock()
+        self.pin1_mock.value.reset_mock()
+        self.motor.stop()
+        self.pin0_mock.value.assert_called_once_with(0)
+        self.pin1_mock.value.assert_called_once_with(0)
+        
+        
+    def test_get_direction(self):
+        self.assertEqual(0, self.motor.direction())
+        self.motor.backward()
+        self.assertEqual(-1, self.motor.direction())
+        self.motor.forward()
+        self.assertEqual(1, self.motor.direction())
+        self.motor.stop()
+        self.assertEqual(0, self.motor.direction())
+        
+    def test_is_running(self):
+        self.assertEqual(False, self.motor.is_running())
+        self.motor.backward()
+        self.assertEqual(True, self.motor.is_running())
+        self.motor.stop()
+        self.assertEqual(False, self.motor.is_running())
+        self.motor.forward()
+        self.assertEqual(True, self.motor.is_running())
 
 if __name__ == '__main__':
 	unittest.main()
