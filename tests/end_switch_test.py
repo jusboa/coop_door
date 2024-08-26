@@ -15,8 +15,7 @@ def pin_mock():
 def switch(pin_mock):
     with patch('coop_door.coop_door.end_switch.Pin') as Pin_mock:
         Pin_mock.side_effect = [pin_mock]
-        switch = EndSwitch(3)
-        return switch
+        return EndSwitch(3)
 
 def test_pin_config():
     with patch('coop_door.coop_door.end_switch.Pin') as Pin_mock:
