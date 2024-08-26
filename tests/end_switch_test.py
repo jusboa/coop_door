@@ -1,30 +1,33 @@
-import unittest
+import pytest
 from unittest.mock import MagicMock
 from unittest.mock import patch
 from unittest.mock import call
 
 import sys
 sys.modules['machine'] = MagicMock()
-from ..coop_door import end_switch
+from ..coop_door.end_switch import EndSwitch
 
-class TestEndSwitch(unittest.TestCase):
-    def setUp(self):
-        with patch('coop_door.coop_door.end_switch.Pin') as Pin_mock:
-            self.pin_mock = MagicMock()
-            Pin_mock.side_effect = [self.pin_mock]
-            self.PIN_NUMBER = 3
-            self.end_switch = end_switch.EndSwitch(self.PIN_NUMBER)
+@pytest.fixture
+def pin_mock():
+    return MagicMock()
 
-    def test_pin_config(self):
-        with patch('coop_door.coop_door.end_switch.Pin') as Pin_mock:
-            Pin_mock.IN = 88
-            Pin_mock.PULL_UP = 44
-            end_switch.EndSwitch(11)
-            calls = [call(11, 88, 44)]
-            Pin_mock.assert_has_calls(calls)
+@pytest.fixture
+def switch(pin_mock):
+    with patch('coop_door.coop_door.end_switch.Pin') as Pin_mock:
+        Pin_mock.side_effect = [pin_mock]
+        switch = EndSwitch(3)
+        return switch
 
-    def test_switchState(self):
-        self.pin_mock.value.return_value = False
-        self.assertTrue(self.end_switch.isOn())
-        self.pin_mock.value.return_value = True
-        self.assertFalse(self.end_switch.isOn())
+def test_pin_config():
+    with patch('coop_door.coop_door.end_switch.Pin') as Pin_mock:
+        Pin_mock.IN = 88
+        Pin_mock.PULL_UP = 44
+        EndSwitch(11)
+        calls = [call(11, 88, 44)]
+        Pin_mock.assert_has_calls(calls)
+
+def test_switchState(pin_mock, switch):
+    pin_mock.value.return_value = False
+    assert switch.isOn()
+    pin_mock.value.return_value = True
+    assert not switch.isOn()
