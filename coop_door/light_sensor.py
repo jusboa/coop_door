@@ -9,6 +9,10 @@ class LightSensor():
         adc_max = 65535
         self.ADC_DARK = (adc_max * r_dark_ohm / (r_dark_ohm + r_up_ohm))
         self.ADC_LIGHT = (adc_max * r_light_ohm / (r_light_ohm + r_up_ohm))
+        self.DAY_LIGHT_PCT = 50
+        self.DAY_HYSTERESIS_PCT = 10
+        self.day_night_threshold_pct = self.DAY_LIGHT_PCT
+        self.light = 0
 
     def read_light_intensity(self):
         """ Return the light intensity in %.
@@ -16,9 +20,17 @@ class LightSensor():
         intensity in percents (0% - dark, 100% - full light).
         The function is blocking.
         """
-        light = 100 + (self.adc.read_u16() - self.ADC_LIGHT) * 100 / (self.ADC_LIGHT - self.ADC_DARK)
-        if light < 0:
-            light = 0
-        elif light > 100:
-            light = 100
-        return light
+        self.light = 100 - (self.adc.read_u16() - self.ADC_LIGHT) * 100 / (self.ADC_DARK - self.ADC_LIGHT)
+        if self.light < 0:
+            self.light = 0
+        elif self.light > 100:
+            self.light = 100
+
+        if self.light > self.day_night_threshold_pct:
+            self.day_night_threshold_pct = self.DAY_LIGHT_PCT - self.DAY_HYSTERESIS_PCT
+        else:
+            self.day_night_threshold_pct = self.DAY_LIGHT_PCT + self.DAY_HYSTERESIS_PCT
+        return self.light
+
+    def is_day(self):
+        return self.light > self.day_night_threshold_pct

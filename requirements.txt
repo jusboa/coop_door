@@ -9,6 +9,7 @@ py==1.11.0
 pyparsing==3.1.1
 pytest==7.0.1
 pytest-mock==3.14.0
+python-statemachine==2.3.6
 tomli==1.2.3
 typing_extensions==4.1.1
 zipp==3.6.0

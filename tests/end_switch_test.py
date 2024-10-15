@@ -14,7 +14,7 @@ def pin_mock():
 @pytest.fixture
 def switch(pin_mock):
     with patch('coop_door.coop_door.end_switch.Pin') as Pin_mock:
-        Pin_mock.side_effect = [pin_mock]
+        Pin_mock.return_value = pin_mock
         return EndSwitch(3)
 
 def test_pin_config():
@@ -27,6 +27,6 @@ def test_pin_config():
 
 def test_switchState(pin_mock, switch):
     pin_mock.value.return_value = False
-    assert switch.isOn()
+    assert switch.is_on()
     pin_mock.value.return_value = True
-    assert not switch.isOn()
+    assert not switch.is_on()
