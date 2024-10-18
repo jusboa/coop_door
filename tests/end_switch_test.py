@@ -12,6 +12,10 @@ def pin_mock():
     return MagicMock()
 
 @pytest.fixture
+def observer_mock():
+    return MagicMock()
+
+@pytest.fixture
 def switch(pin_mock):
     with patch('coop_door.coop_door.end_switch.Pin') as Pin_mock:
         Pin_mock.return_value = pin_mock
@@ -25,8 +29,10 @@ def test_pin_config():
         calls = [call(11, 88, 44)]
         Pin_mock.assert_has_calls(calls)
 
-def test_switchState(pin_mock, switch):
+def test_switch_state(pin_mock, switch):
     pin_mock.value.return_value = False
     assert switch.is_on()
     pin_mock.value.return_value = True
     assert not switch.is_on()
+
+    

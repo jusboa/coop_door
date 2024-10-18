@@ -2,6 +2,7 @@ from machine import ADC
 
 class LightSensor():
     def __init__(self, adc_channel):
+        self.slots = []
         self.adc = ADC(adc_channel);
         r_up_ohm = 3.3e3
         r_dark_ohm = 20e6
@@ -28,9 +29,17 @@ class LightSensor():
 
         if self.light > self.day_night_threshold_pct:
             self.day_night_threshold_pct = self.DAY_LIGHT_PCT - self.DAY_HYSTERESIS_PCT
+            _is_day = True
         else:
             self.day_night_threshold_pct = self.DAY_LIGHT_PCT + self.DAY_HYSTERESIS_PCT
+            _is_day = False
+            
+        for slot in self.slots:
+            slot(_is_day)
         return self.light
 
     def is_day(self):
         return self.light > self.day_night_threshold_pct
+
+    def register_day_slot(self, slot):
+        self.slots.append(slot)
