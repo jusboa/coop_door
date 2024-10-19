@@ -14,6 +14,7 @@ class LightSensor():
         self.DAY_HYSTERESIS_PCT = 10
         self.day_night_threshold_pct = self.DAY_LIGHT_PCT
         self.light = 0
+        self.was_day = None
 
     def read_light_intensity(self):
         """ Return the light intensity in %.
@@ -33,9 +34,11 @@ class LightSensor():
         else:
             self.day_night_threshold_pct = self.DAY_LIGHT_PCT + self.DAY_HYSTERESIS_PCT
             _is_day = False
-            
-        for slot in self.slots:
-            slot(_is_day)
+
+        if (self.was_day is not _is_day):
+            self.was_day = _is_day
+            for slot in self.slots:
+                slot(_is_day)
         return self.light
 
     def is_day(self):
