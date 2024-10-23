@@ -4,12 +4,10 @@ class LightSensor():
     def __init__(self, adc_channel):
         self.slots = []
         self.adc = ADC(adc_channel);
-        r_up_ohm = 3.3e3
-        r_dark_ohm = 20e6
-        r_light_ohm = 190
-        adc_max = 65535
-        self.ADC_DARK = (adc_max * r_dark_ohm / (r_dark_ohm + r_up_ohm))
-        self.ADC_LIGHT = (adc_max * r_light_ohm / (r_light_ohm + r_up_ohm))
+        self.R_UP_OHM = 3.3e3
+        self.R_DARK_OHM = 20e6
+        self.R_LIGHT_OHM = 190
+        self.ADC_MAX = 65535
         self.DAY_LIGHT_PCT = 50
         self.DAY_HYSTERESIS_PCT = 10
         self.day_night_threshold_pct = self.DAY_LIGHT_PCT
@@ -22,7 +20,12 @@ class LightSensor():
         intensity in percents (0% - dark, 100% - full light).
         The function is blocking.
         """
-        self.light = 100 - (self.adc.read_u16() - self.ADC_LIGHT) * 100 / (self.ADC_DARK - self.ADC_LIGHT)
+        adc_sensor = self.adc.read_u16()
+        if (adc_sensor >= self.ADC_MAX):
+            self.light = 0
+        else:
+            r_sensor = adc_sensor * self.R_UP_OHM / (self.ADC_MAX - adc_sensor)
+            self.light = 100 + 100 * (r_sensor - self.R_LIGHT_OHM) / (self.R_LIGHT_OHM - self.R_DARK_OHM)
         if self.light < 0:
             self.light = 0
         elif self.light > 100:

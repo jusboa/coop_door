@@ -16,5 +16,4 @@ class EndSwitch:
         self.last_state = self.is_on()
 
     def register_slot(self, slot):
-        print(f'slot={slot}')
         self.slots.append(slot)
