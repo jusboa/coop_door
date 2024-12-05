@@ -1,0 +1,212 @@
+import pytest
+from unittest.mock import MagicMock
+from unittest.mock import patch
+
+from ..coop_door.state_machine import StateMachine, State, Signal
+
+@pytest.fixture
+def state_machine():
+    return StateMachine()
+
+@pytest.fixture
+def states(state_machine):
+    states = {'red' : State('red', state_machine),
+              'green' : State('green', state_machine),
+              'orange' : State('orange', state_machine)}
+    return states
+
+def test_state_has_name(states):
+    assert states['red'].name is 'red'
+    states['red'].name = 'black'
+    assert states['red'].name is 'black'
+
+def test_set_init_state(state_machine, states):
+    # This works.
+    state_machine.set_init_state(states['orange'])
+    # This fails.
+    blue = State('blue')
+    with pytest.raises(AssertionError):
+        state_machine.set_init_state(blue)
+
+def test_start_without_init_state(state_machine):
+    with pytest.raises(AssertionError):
+        state_machine.start()
+
+def test_current_state_on_init(state_machine, states):
+    state_machine.set_init_state(states['green'])
+    assert state_machine.current_state is None
+
+def test_current_state_after_start(state_machine, states):
+    state_machine.set_init_state(states['green'])
+    state_machine.start()
+    assert state_machine.current_state is states['green']
+
+def test_state_transtion(state_machine, states):
+    go = Signal()
+    states['red'].on_signal(go).go_to(states['orange'])
+    state_machine.set_init_state(states['red'])
+    state_machine.start()
+    state_machine.send_signal(go)
+    assert state_machine.current_state is states['orange']
+
+def test_irrelevant_signals_are_ignored(state_machine, states):
+    go = Signal()
+    stop = Signal()
+    states['red'].on_signal(go).go_to(states['green'])
+    states['green'].on_signal(go).go_to(states['red'])
+    state_machine.set_init_state(states['red'])
+    state_machine.start()
+    state_machine.send_signal(stop)
+    assert state_machine.current_state is states['red']
+    
+def test_transition_action(state_machine, states):
+    go = Signal()
+    actions = []
+    states['red'].on_signal(go).do(lambda x=actions:x.append('red')).go_to(states['green'])
+    state_machine.set_init_state(states['red'])
+    state_machine.start()
+    state_machine.send_signal(go)
+    assert actions == ['red']
+
+def test_entry_action(state_machine, states):
+    go = Signal()
+    actions = []
+    states['red'].do_on_entry(lambda x=actions:x.append('red')).on_signal(go).go_to(states['green'])
+    state_machine.set_init_state(states['red'])
+    state_machine.start()
+    state_machine.send_signal(go)
+    assert actions == ['red']
+
+def test_init_state_entry_action_on_start(state_machine, states):
+    actions = []
+    states['red'].do_on_entry(lambda x=actions:x.append('red'))
+    state_machine.set_init_state(states['red'])
+    state_machine.start()
+    assert actions == ['red']
+
+def test_exit_action(state_machine, states):
+    go = Signal()
+    actions = []
+    states['red'].do_on_exit(lambda x=actions:x.append('red')).on_signal(go).go_to(states['green'])
+    state_machine.set_init_state(states['red'])
+    state_machine.start()
+    state_machine.send_signal(go)
+    assert actions == ['red']
+
+def test_current_state_of_nested_states(state_machine, states):
+    another_state = State('another_state', states['red'])
+    states['red'].set_init_state(another_state)
+    state_machine.set_init_state(states['red'])
+    state_machine.start()
+    assert state_machine.current_state is states['red']
+
+def test_entry_actions_of_nested_states_on_start(state_machine, states):
+    actions = []
+    state_machine.set_init_state(states['red'])
+    states['red'].do_on_entry(lambda x=actions:x.append('red'))
+    inner_state = State('inner_state', states['red'])
+    inner_state.do_on_entry(lambda x=actions:x.append('inner_state'))
+    states['red'].set_init_state(inner_state)
+    inner_inner_state = State('inner_inner_state', inner_state)
+    inner_state.set_init_state(inner_inner_state)
+    inner_inner_state.do_on_entry(lambda x=actions:x.append('inner_inner_state'))
+    state_machine.start()
+    assert actions == ['red', 'inner_state', 'inner_inner_state']
+
+def test_entry_actions_of_nested_states_on_signal(state_machine, states):
+    actions = []
+    state_machine.set_init_state(states['red'])
+    go = Signal()
+    states['red'].on_signal(go).go_to(states['green'])
+    states['green'].do_on_entry(lambda x=actions:x.append('green'))
+    inner_state = State('inner_state', states['green'])
+    inner_state.do_on_entry(lambda x=actions:x.append('inner_state'))
+    states['green'].set_init_state(inner_state)
+    inner_inner_state = State('inner_inner_state', inner_state)
+    inner_state.set_init_state(inner_inner_state)
+    inner_inner_state.do_on_entry(lambda x=actions:x.append('inner_inner_state'))
+    state_machine.start()
+    state_machine.send_signal(go)
+    assert actions == ['green', 'inner_state', 'inner_inner_state']
+
+def test_exit_actions_of_nested_states(state_machine, states):
+    actions = []
+    state_machine.set_init_state(states['red'])
+    go = Signal()
+    states['red'].on_signal(go).go_to(states['green'])
+    states['red'].do_on_exit(lambda x=actions:x.append('red'))
+    inner_state = State('inner_state', states['red'])
+    inner_state.do_on_exit(lambda x=actions:x.append('inner_state'))
+    states['red'].set_init_state(inner_state)
+    inner_inner_state = State('inner_inner_state', inner_state)
+    inner_state.set_init_state(inner_inner_state)
+    inner_inner_state.do_on_exit(lambda x=actions:x.append('inner_inner_state'))
+    state_machine.start()
+    state_machine.send_signal(go)
+    assert actions == ['inner_inner_state', 'inner_state', 'red']
+
+def test_simple_state_machine(state_machine, states):
+    actions = []
+    idle = State('idle', state_machine)
+    active = State('active', state_machine)
+    states['red'] = State('red', active)
+    states['green'] = State('green', active)
+    states['orange'] = State('orange', active)
+    active.set_init_state(states['red'])
+    state_machine.set_init_state(idle)
+    go_delay_expired = Signal()
+    stop_delay_expired = Signal()
+    go = Signal()
+    stop = Signal()
+    wakeup = Signal()
+    sleep = Signal()
+    idle.on_signal(wakeup).go_to(active)
+    active.on_signal(sleep).go_to(idle)
+    states['red'].on_signal(go).go_to(states['orange'])
+    states['orange'].on_signal(go_delay_expired).go_to(states['green'])
+    states['orange'].on_signal(stop_delay_expired).go_to(states['red'])
+    states['green'].on_signal(stop).go_to(states['orange'])
+    idle.do_on_entry(lambda x=actions:x.append('idle'))
+    active.do_on_entry(lambda x=actions:x.append('active'))
+    states['red'].do_on_entry(lambda x=actions:x.append('red'))
+    states['green'].do_on_entry(lambda x=actions:x.append('green'))
+    states['orange'].do_on_entry(lambda x=actions:x.append('orange'))
+    state_machine.start()
+    state_machine.send_signal(wakeup)
+    state_machine.send_signal(go)
+    state_machine.send_signal(go_delay_expired)
+    state_machine.send_signal(stop)
+    state_machine.send_signal(stop_delay_expired)
+    state_machine.send_signal(sleep)
+    assert actions == ['idle', 'active', 'red', 'orange', 'green', 'orange', 'red', 'idle']
+
+def test_direct_transition_from_child_state(state_machine, states):
+    actions = []
+    go = Signal()
+    singleton = State('singleton', state_machine)
+    super_state = State('super_state', state_machine)
+    child_state = State('child_state', super_state)
+    child_state.on_signal(go).go_to(singleton)
+    state_machine.set_init_state(super_state)
+    super_state.set_init_state(child_state)
+    super_state.do_on_exit(lambda x=actions:x.append('super_state'))
+    child_state.do_on_exit(lambda x=actions:x.append('child_state'))
+    state_machine.start()
+    state_machine.send_signal(go)
+    assert actions == ['child_state', 'super_state']
+
+# def test_direct_transition_to_child_state(state_machine, states):
+#     actions = []
+#     go = Signal()
+#     singleton = State('singleton', state_machine)
+#     super_state = State('super_state', state_machine)
+#     child_state = State('child_state', super_state)
+#     singleton.on_signal(go).go_to(child_state)
+#     state_machine.set_init_state(singleton)
+#     super_state.set_init_state(child_state)
+#     super_state.do_on_entry(lambda x=actions:x.append('super_state'))
+#     child_state.do_on_entry(lambda x=actions:x.append('child_state'))
+#     state_machine.start()
+#     state_machine.send_signal(go)
+#     assert actions == ['super_state', 'child_state']
+    
