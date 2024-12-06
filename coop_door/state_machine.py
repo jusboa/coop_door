@@ -22,29 +22,7 @@ class State():
         self.entry_action = None
         self.exit_action = None
         self.current_state = None
-        self.parent_state = parent
-
-    def send_signal(self, signal):
-        transition = None
-        if signal in self.transitions.keys():
-            transition = self.transitions[signal]
-        elif self.current_state:
-            transition = self.current_state.send_signal(signal)
-
-        if not transition:
-            return None
-
-        logging.debug(f'target={transition.target.name}')
-
-        if transition.target and transition.target.parent_state is self:
-            self.current_state.exit()
-            if transition.action:
-                transition.action()
-            self.current_state = transition.target
-            self.current_state.enter()
-            return None
-        else:
-            return transition
+        self.parent = parent
 
     def on_signal(self, signal):
         self.transitions[signal] = Transition(self)
@@ -60,12 +38,16 @@ class State():
 
     def enter(self):
         logging.debug(f'entering {self.name}')
+        if self.parent:
+            self.parent.current_state = self
         if self.entry_action:
             logging.debug(f'entry action of {self.name}')
             self.entry_action()
+
+    def start(self):
+        self.enter()
         if self.init_state:
-            self.current_state = self.init_state
-            return self.init_state.enter()
+            return self.init_state.start()
         return self
 
     def exit(self):
@@ -78,7 +60,7 @@ class State():
         logging.debug(f'leaving {self.name}')
 
     def set_init_state(self, init_state):
-        assert init_state.parent_state is self
+        assert init_state.parent is self
         self.init_state = init_state
 
 class Signal():
@@ -90,4 +72,45 @@ class StateMachine(State):
 
     def start(self):
         assert self.init_state
-        self.enter()
+        super().start()
+
+    def send_signal(self, signal):
+        # Find a state that handles the signal.
+        transition = None
+        state = self.current_state
+        while state:
+            if signal in state.transitions.keys():
+                transition = state.transitions[signal]
+                break
+            state = state.current_state
+
+        if not transition:
+            # Signal is not handled by any of active states.
+            return None
+
+        source = transition.source
+        target = transition.target
+        common_parent = None
+        target_path = [target]
+        while source:
+            if source.parent is target.parent:
+                common_parent = target.parent
+                break
+            target = target.parent
+            target_path.append(target)
+            if not target:
+                target = transition.target
+                target_path = [target]
+                source = source.parent
+
+        assert common_parent, f'Transition source {transition.source} and target \
+        {transition.target} must have a common parent - at least the state machine.'
+        source.exit()
+        if transition.action:
+            transition.action()
+        for state in target_path[:0:-1]:
+            state.enter()
+        target_path[0].start()
+            
+
+

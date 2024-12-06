@@ -195,18 +195,18 @@ def test_direct_transition_from_child_state(state_machine, states):
     state_machine.send_signal(go)
     assert actions == ['child_state', 'super_state']
 
-# def test_direct_transition_to_child_state(state_machine, states):
-#     actions = []
-#     go = Signal()
-#     singleton = State('singleton', state_machine)
-#     super_state = State('super_state', state_machine)
-#     child_state = State('child_state', super_state)
-#     singleton.on_signal(go).go_to(child_state)
-#     state_machine.set_init_state(singleton)
-#     super_state.set_init_state(child_state)
-#     super_state.do_on_entry(lambda x=actions:x.append('super_state'))
-#     child_state.do_on_entry(lambda x=actions:x.append('child_state'))
-#     state_machine.start()
-#     state_machine.send_signal(go)
-#     assert actions == ['super_state', 'child_state']
+def test_direct_transition_to_child_state(state_machine, states):
+    actions = []
+    go = Signal()
+    singleton = State('singleton', state_machine)
+    super_state = State('super_state', state_machine)
+    child_state = State('child_state', super_state)
+    singleton.on_signal(go).go_to(child_state)
+    state_machine.set_init_state(singleton)
+    super_state.set_init_state(child_state)
+    super_state.do_on_entry(lambda x=actions:x.append('super_state'))
+    child_state.do_on_entry(lambda x=actions:x.append('child_state'))
+    state_machine.start()
+    state_machine.send_signal(go)
+    assert actions == ['super_state', 'child_state']
     
