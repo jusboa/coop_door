@@ -16,9 +16,9 @@ def states(state_machine):
     return states
 
 def test_state_has_name(states):
-    assert states['red'].name is 'red'
+    assert states['red'].name == 'red'
     states['red'].name = 'black'
-    assert states['red'].name is 'black'
+    assert states['red'].name == 'black'
 
 def test_set_init_state(state_machine, states):
     # This works.
