@@ -52,8 +52,7 @@ class State():
     def start(self):
         self.enter()
         if self.init_state:
-            return self.init_state.start()
-        return self
+            self.init_state.start()
 
     def exit(self):
         if self.current_state:
