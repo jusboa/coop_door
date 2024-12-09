@@ -94,7 +94,7 @@ class State():
                 transition.action()
             # Enter the target state and all its parents.
             # Reverse it to go down in hieararchy - from parent to child
-            target_path = target_path[::-1]
+            target_path.reverse()
             for state in target_path[:-1]:
                 state.enter()
             target_path[-1].start()
