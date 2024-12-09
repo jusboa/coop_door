@@ -1,8 +1,13 @@
 import pytest
 from unittest.mock import MagicMock
 from unittest.mock import patch
-
+import sys
+sys.modules['timer'] = MagicMock()
 from ..coop_door.state_machine import StateMachine, State, Signal
+
+@pytest.fixture
+def timer_mock():
+    return MagicMock()
 
 @pytest.fixture
 def state_machine():
@@ -210,3 +215,16 @@ def test_direct_transition_to_child_state(state_machine, states):
     state_machine.send_signal(go)
     assert actions == ['super_state', 'child_state']
     
+def test_state_timeout(state_machine, states, timer_mock):
+    calls = []
+    timeout_slot = None
+    with patch('coop_door.coop_door.state_machine.Timer') as Timer_mock:
+        Timer_mock.return_value = timer_mock
+        states['orange'].do_on_entry(lambda x=calls : calls.append('orange')).on_timeout(300).go_to(states['green'])
+        timeout_slot, _ = Timer_mock.call_args.args
+        print(timeout_slot)
+    states['green'].do_on_entry(lambda x=calls : calls.append('green'))
+    state_machine.set_init_state(states['orange'])
+    state_machine.start()
+    timeout_slot()
+    assert calls == ['orange', 'green']

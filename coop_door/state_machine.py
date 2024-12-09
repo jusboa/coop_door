@@ -1,10 +1,11 @@
 import logging
+from coop_door.coop_door.timer import Timer
 
 class Transition():
-    def __init__(self, source):
+    def __init__(self, source, target=None, action=None):
         self.source = source
-        self.target = None
-        self.action = None
+        self.target = target
+        self.action = action
 
     def go_to(self, target):
         self.target = target
@@ -23,6 +24,8 @@ class State():
         self.exit_action = None
         self.current_state = None
         self.parent = parent
+        self.timeout = Signal()
+        self.timer = None
 
     def on_signal(self, signal):
         self.transitions[signal] = Transition(self)
@@ -46,6 +49,8 @@ class State():
 
     def start(self):
         self.enter()
+        if self.timer:
+            self.timer.start()
         if self.init_state:
             return self.init_state.start()
         return self
@@ -63,6 +68,53 @@ class State():
         assert init_state.parent is self
         self.init_state = init_state
 
+    def on_timeout(self, timeout_ms):
+        self.timer = Timer(lambda x=self : self.send_signal(self.timeout), timeout_ms)
+        self.transitions[self.timeout] = Transition(self)
+        return self.transitions[self.timeout]
+
+    def _try_do_transition(self, transition):
+        ''' Try to perform the state transtion.
+        Return None if the transition has been done. Return the original
+        transition if not done.
+        '''
+        # Try to find a common source and target parent.
+        target = transition.target
+        target_path = [target]
+        while target and target.parent is not self.parent:
+            target = target.parent
+            # Keep track of parents to call entry actions
+            # when entering a target state.
+            target_path.append(target)
+        if target:
+            # Found a common source and target parent.
+            # Exit the source state.
+            self.exit()
+            # Do the transition action.
+            if transition.action:
+                transition.action()
+            # Enter the target state and all its parents.
+            for state in target_path[:0:-1]:
+                state.enter()
+            target_path[0].start()
+
+            return None
+        else:
+            # No common parent of source and target found.
+            # Kick it up.
+            return transition
+
+    def send_signal(self, signal):
+        if signal in self.transitions.keys():
+            return self._try_do_transition(self.transitions[signal])
+        elif self.current_state:
+            # Try active substate
+            transition = self.current_state.send_signal(signal)
+            if transition:
+                # Retry with ammended transition
+                return self._try_do_transition(transition)
+        return None
+
 class Signal():
     pass
 
@@ -73,44 +125,3 @@ class StateMachine(State):
     def start(self):
         assert self.init_state
         super().start()
-
-    def send_signal(self, signal):
-        # Find a state that handles the signal.
-        transition = None
-        state = self.current_state
-        while state:
-            if signal in state.transitions.keys():
-                transition = state.transitions[signal]
-                break
-            state = state.current_state
-
-        if not transition:
-            # Signal is not handled by any of active states.
-            return None
-
-        source = transition.source
-        target = transition.target
-        common_parent = None
-        target_path = [target]
-        while source:
-            if source.parent is target.parent:
-                common_parent = target.parent
-                break
-            target = target.parent
-            target_path.append(target)
-            if not target:
-                target = transition.target
-                target_path = [target]
-                source = source.parent
-
-        assert common_parent, f'Transition source {transition.source} and target \
-        {transition.target} must have a common parent - at least the state machine.'
-        source.exit()
-        if transition.action:
-            transition.action()
-        for state in target_path[:0:-1]:
-            state.enter()
-        target_path[0].start()
-            
-
-
