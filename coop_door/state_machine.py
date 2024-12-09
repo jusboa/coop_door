@@ -41,6 +41,8 @@ class State():
 
     def enter(self):
         logging.debug(f'entering {self.name}')
+        if self.timer:
+            self.timer.start()
         if self.parent:
             self.parent.current_state = self
         if self.entry_action:
@@ -49,8 +51,6 @@ class State():
 
     def start(self):
         self.enter()
-        if self.timer:
-            self.timer.start()
         if self.init_state:
             return self.init_state.start()
         return self
@@ -94,9 +94,11 @@ class State():
             if transition.action:
                 transition.action()
             # Enter the target state and all its parents.
-            for state in target_path[:0:-1]:
+            # Reverse it to go down in hieararchy - from parent to child
+            target_path = target_path[::-1]
+            for state in target_path[:-1]:
                 state.enter()
-            target_path[0].start()
+            target_path[-1].start()
 
             return None
         else:
