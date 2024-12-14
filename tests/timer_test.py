@@ -4,7 +4,7 @@ from unittest.mock import patch
 from unittest.mock import call
 
 import sys
-sys.modules['machine.timer'] = MagicMock()
+sys.modules['machine'] = MagicMock()
 from ..coop_door.timer import Timer
 
 @pytest.fixture

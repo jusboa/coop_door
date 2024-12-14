@@ -1,4 +1,4 @@
-from machine.timer import Timer as MachineTimer
+from machine import Timer as MachineTimer
 
 class Timer():
     def __init__(self, timeout_ms, timeout_slot):
@@ -7,7 +7,7 @@ class Timer():
         self.timeout_ms = timeout_ms
 
     def start(self):
-        self.machine_timer.init(period=self.timeout_ms, callback=self.timeout_slot)
+        self.machine_timer.init(period=self.timeout_ms, callback=lambda t,x=self:self.timeout_slot())
 
     def stop(self):
         self.machine_timer.deinit()
