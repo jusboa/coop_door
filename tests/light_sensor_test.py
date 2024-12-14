@@ -8,8 +8,8 @@ from ..coop_door.light_sensor import LightSensor
 import math
 
 R_UP_OHM = 3.3e3
-R_DARK_OHM = 20e6 # when sensor is covered
-R_LIGHT_OHM  = 190 # when lighten with a torch
+R_DARK_OHM = 58e3 # when sensor is covered
+R_LIGHT_OHM  = 200 # when lighten with a torch
 ADC_MAX = 65535 # 15 bits
 
 def light_to_ohms(intensity):
@@ -35,22 +35,22 @@ def light_sensor(adc_mock):
 
 def test_zero_adc_is_full_light(light_sensor, adc_mock):
     adc_mock.read_u16.return_value = 0
-    assert light_sensor.read_light_intensity() == 100
+    assert math.isclose(light_sensor.read_light_intensity(), 100)
 
 def test_full_adc_is_complete_dark(light_sensor, adc_mock):
     adc_mock.read_u16.return_value = ADC_MAX
-    assert light_sensor.read_light_intensity() == 0
+    assert math.isclose(light_sensor.read_light_intensity(), 0, abs_tol=1e-6)
 
 def test_full_dark(light_sensor, adc_mock):
     adc_mock.read_u16.return_value = light_to_adc(0)
-    assert light_sensor.read_light_intensity() == 0
+    assert math.isclose(light_sensor.read_light_intensity(), 0, abs_tol=1e-6)
 
 def test_full_light(light_sensor, adc_mock):
     adc_mock.read_u16.return_value = light_to_adc(100)
-    assert light_sensor.read_light_intensity() == 100
+    assert math.isclose(light_sensor.read_light_intensity(), 100)
 
 def test_half_way(light_sensor, adc_mock):
-    adc_mock.read_u16.return_value = light_to_adc(50) # ((65535 * 20e6) / (20e6 + 3.3e3) + (65535 * 190) / (190 + 3.3e3)) / 2
+    adc_mock.read_u16.return_value = light_to_adc(50)
     assert math.isclose(light_sensor.read_light_intensity(), 50)
 
 def test_is_not_day(light_sensor, adc_mock):

@@ -38,7 +38,7 @@ def door_controller(light_sensor_mock,
           patch('coop_door.coop_door.door_controller.EndSwitch') as EndSwitch_mock):
         Motor_mock.return_value = motor_mock
         LightSensor_mock.return_value = light_sensor_mock
-        EndSwitch_mock.side_effect = { 1 : open_end_switch_mock, 2 : close_end_switch_mock }.get
+        EndSwitch_mock.side_effect = { 4 : open_end_switch_mock, 5 : close_end_switch_mock }.get
         return DoorController()
 
 def test_register_day_slot(light_sensor_mock):
@@ -97,4 +97,5 @@ def test_door_closed_drive_open_in_day(door_controller,
     door_controller.day_slot(True)
     motor_mock.backward.assert_called_once()
     
-    
+# test pin and adc channel assignment
+# read_light_intensity needs to be called regularly

@@ -222,7 +222,6 @@ def test_state_timeout(state_machine, states, timer_mock):
         Timer_mock.return_value = timer_mock
         states['orange'].do_on_entry(lambda x=calls : calls.append('orange')).on_timeout(300).go_to(states['green'])
         timeout_slot, _ = Timer_mock.call_args.args
-        print(timeout_slot)
     states['green'].do_on_entry(lambda x=calls : calls.append('green'))
     state_machine.set_init_state(states['orange'])
     state_machine.start()

@@ -5,10 +5,10 @@ from .state_machine import StateMachine, State, Signal
 
 class DoorController():
     def __init__(self):
-        self.motor = Motor(0, 1)
-        self.light_sensor = LightSensor(0)
-        self.open_switch = EndSwitch(1)
-        self.close_switch = EndSwitch(2)
+        self.motor = Motor(2, 3)
+        self.light_sensor = LightSensor(2)
+        self.open_switch = EndSwitch(4)
+        self.close_switch = EndSwitch(5)
         self.light_sensor.register_day_slot(self.day_slot)
         self.open_switch.register_slot(self.open_switch_slot)
         self.close_switch.register_slot(self.close_switch_slot)

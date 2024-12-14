@@ -1,14 +1,15 @@
-class Timer():
-    def __init__(self, timeout_slot, timeout_ms=None):
-        pass
+from machine.timer import Timer as MachineTimer
 
-    def is_active(self):
-        pass
+class Timer():
+    def __init__(self, timeout_ms, timeout_slot):
+        self.machine_timer = MachineTimer()
+        self.timeout_slot = timeout_slot
+        self.timeout_ms = timeout_ms
 
     def start(self):
-        pass
+        self.machine_timer.init(period=self.timeout_ms, callback=self.timeout_slot)
 
     def stop(self):
-        pass
+        self.machine_timer.deinit()
 
             

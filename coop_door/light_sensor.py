@@ -5,8 +5,8 @@ class LightSensor():
         self.slots = []
         self.adc = ADC(adc_channel);
         self.R_UP_OHM = 3.3e3
-        self.R_DARK_OHM = 20e6
-        self.R_LIGHT_OHM = 190
+        self.R_DARK_OHM = 58e3 # adc ~ 62000
+        self.R_LIGHT_OHM = 200 # adc ~ 4000
         self.ADC_MAX = 65535
         self.DAY_LIGHT_PCT = 50
         self.DAY_HYSTERESIS_PCT = 10
