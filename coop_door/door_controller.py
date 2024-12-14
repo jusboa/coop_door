@@ -2,9 +2,10 @@ from .dcmotor_drive import Motor
 from .light_sensor import LightSensor
 from .end_switch import EndSwitch
 from .state_machine import StateMachine, State, Signal
+from .timer import Timer
 
 class DoorController():
-    def __init__(self):
+    def __init__(self, light_read_period_ms=1000):
         self.motor = Motor(2, 3)
         self.light_sensor = LightSensor(2)
         self.open_switch = EndSwitch(4)
@@ -35,6 +36,8 @@ class DoorController():
         drive_close.do_on_entry(lambda m=self.motor : m.forward())\
                    .on_signal(self.closed_end_switch_on).go_to(closed)
         self.state_machine.start()
+        self.timer = Timer(light_read_period_ms, self.light_sensor.read_light_intensity)
+        self.timer.start()
 
     def day_slot(self, is_day):
         if (is_day):
