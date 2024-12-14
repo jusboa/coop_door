@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
 from unittest.mock import patch
-from unittest.mock import call
 
 import sys
 sys.modules['machine'] = MagicMock()
@@ -26,8 +25,7 @@ def test_pin_config():
         Pin_mock.IN = 88
         Pin_mock.PULL_UP = 44
         EndSwitch(11)
-        calls = [call(11, 88, 44)]
-        Pin_mock.assert_has_calls(calls)
+        Pin_mock.assert_called_once_with(11, 88, 44)
 
 def test_switch_state(pin_mock, switch):
     pin_mock.value.return_value = False

@@ -21,8 +21,7 @@ def test_pin_config():
     with patch('coop_door.coop_door.dcmotor_drive.Pin') as Pin_mock:
         Pin_mock.OUT = 33
         Motor(0, 1)
-        calls = [call(0, 33), call(1, 33)]
-        Pin_mock.assert_has_calls(calls)
+        Pin_mock.assert_has_calls([call(0, 33), call(1, 33)])
 
 def test_drive_forward(motor, pin_mock):
     motor.forward()

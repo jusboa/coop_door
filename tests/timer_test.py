@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
 from unittest.mock import patch
-from unittest.mock import call
 
 import sys
 sys.modules['machine'] = MagicMock()
@@ -13,7 +12,7 @@ def machine_timer_mock():
 
 @pytest.fixture
 def slot():
-    return lambda:False
+    return lambda:'timer_test_slot'
 
 @pytest.fixture
 def timeout():
@@ -28,15 +27,14 @@ def timer(machine_timer_mock, timeout, slot):
 def test_machine_timer_creation(timeout, slot):
     with patch('coop_door.coop_door.timer.MachineTimer') as MachineTimer_mock:
         Timer(timeout, slot)
-        calls = [call()]
-        MachineTimer_mock.assert_has_calls(calls)
+        MachineTimer_mock.assert_called_once_with()
 
 def test_start(timer, machine_timer_mock, timeout, slot):
     timer.start()
-    calls = [call(period=timeout, callback=slot)]
-    machine_timer_mock.init.assert_has_calls(calls)
+    machine_timer_mock.init.assert_called_once()
+    assert machine_timer_mock.init.call_args.kwargs['period'] == timeout
+    assert machine_timer_mock.init.call_args.kwargs['callback'](None) == slot()
 
 def test_stop(timer, machine_timer_mock):
     timer.stop()
-    calls = [call()]
-    machine_timer_mock.deinit.assert_has_calls(calls)
+    machine_timer_mock.deinit.assert_called_once()
