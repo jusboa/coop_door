@@ -1,5 +1,5 @@
-import logging
-from coop_door.coop_door.timer import Timer
+#import logging
+from .timer import Timer
 
 class Transition():
     def __init__(self, source, target=None, action=None):
@@ -40,13 +40,13 @@ class State():
         return self
 
     def enter(self):
-        logging.debug(f'entering {self.name}')
+        #logging.debug(f'entering {self.name}')
         if self.timer:
             self.timer.start()
         if self.parent:
             self.parent.current_state = self
         if self.entry_action:
-            logging.debug(f'entry action of {self.name}')
+            #logging.debug(f'entry action of {self.name}')
             self.entry_action()
 
     def start(self):
@@ -58,17 +58,19 @@ class State():
         if self.current_state:
             self.current_state.exit()
         if self.exit_action:
-            logging.debug(f'exit action of {self.name}')
+            #logging.debug(f'exit action of {self.name}')
             self.exit_action()
         self.current_state = None
-        logging.debug(f'leaving {self.name}')
+        #logging.debug(f'leaving {self.name}')
 
     def set_init_state(self, init_state):
         assert init_state.parent is self
         self.init_state = init_state
 
     def on_timeout(self, timeout_ms):
-        self.timer = Timer(lambda x=self : self.send_signal(self.timeout), timeout_ms)
+        self.timer = Timer(timeout_ms,
+                           lambda x=self : self.send_signal(self.timeout),
+                           Timer.SINGLE_SHOT)
         self.transitions[self.timeout] = Transition(self)
         return self.transitions[self.timeout]
 

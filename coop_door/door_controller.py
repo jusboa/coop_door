@@ -5,7 +5,7 @@ from .state_machine import StateMachine, State, Signal
 from .timer import Timer
 
 class DoorController():
-    def __init__(self, light_read_period_ms=1000):
+    def __init__(self, wake_up_period_ms=1000):
         self.motor = Motor(2, 3)
         self.light_sensor = LightSensor(2)
         self.open_switch = EndSwitch(4)
@@ -33,11 +33,19 @@ class DoorController():
         self.closed_end_switch_on = Signal()
         drive_open.do_on_entry(lambda m=self.motor : m.backward())\
                   .on_signal(self.opened_end_switch_on).go_to(opened)
+        drive_open.on_timeout(10000).go_to(opened)
         drive_close.do_on_entry(lambda m=self.motor : m.forward())\
                    .on_signal(self.closed_end_switch_on).go_to(closed)
+        drive_close.on_timeout(10000).go_to(closed)
+        self.timer = Timer(wake_up_period_ms, self._wake_up)
+        # Move following into a start() method
         self.state_machine.start()
-        self.timer = Timer(light_read_period_ms, self.light_sensor.read_light_intensity)
         self.timer.start()
+
+    def _wake_up(self):
+        self.light_sensor.read_light_intensity()
+        self.open_switch.read()
+        self.close_switch.read()
 
     def day_slot(self, is_day):
         if (is_day):

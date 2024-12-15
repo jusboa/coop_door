@@ -9,7 +9,7 @@ class EndSwitch:
     def is_on(self):
         return not self.pin.value()
 
-    def run(self):
+    def read(self):
         for slot in self.slots:
             if (self.is_on() is not self.last_state):
                 slot(self.is_on())

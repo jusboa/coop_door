@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock
 from unittest.mock import patch
 import sys
-sys.modules['timer'] = MagicMock()
+sys.modules['coop_door.coop_door.timer'] = MagicMock()
 from ..coop_door.state_machine import StateMachine, State, Signal
 
 @pytest.fixture
@@ -10,8 +10,10 @@ def timer_mock():
     return MagicMock()
 
 @pytest.fixture
-def state_machine():
-    return StateMachine()
+def state_machine(timer_mock):
+    with patch('coop_door.coop_door.state_machine.Timer') as Timer_mock:
+        Timer_mock.return_value = timer_mock
+        return StateMachine()
 
 @pytest.fixture
 def states(state_machine):
@@ -215,15 +217,19 @@ def test_direct_transition_to_child_state(state_machine, states):
     state_machine.send_signal(go)
     assert actions == ['super_state', 'child_state']
     
-def test_state_timeout(state_machine, states, timer_mock):
+def test_state_timeout(state_machine, states):
     calls = []
     timeout_slot = None
     with patch('coop_door.coop_door.state_machine.Timer') as Timer_mock:
-        Timer_mock.return_value = timer_mock
-        states['orange'].do_on_entry(lambda x=calls : calls.append('orange')).on_timeout(300).go_to(states['green'])
-        timeout_slot, _ = Timer_mock.call_args.args
-    states['green'].do_on_entry(lambda x=calls : calls.append('green'))
-    state_machine.set_init_state(states['orange'])
-    state_machine.start()
-    timeout_slot()
-    assert calls == ['orange', 'green']
+        timeout_expct = 300
+        Timer_mock.SINGLE_SHOT = 999
+        states['orange'].do_on_entry(lambda x=calls : calls.append('orange')).on_timeout(timeout_expct).go_to(states['green'])
+        assert Timer_mock.called_once()
+        assert Timer_mock.call_args.args[0] == timeout_expct
+        assert Timer_mock.call_args.args[2] == Timer_mock.SINGLE_SHOT
+        timeout_slot = Timer_mock.call_args.args[1]
+        states['green'].do_on_entry(lambda x=calls : calls.append('green'))
+        state_machine.set_init_state(states['orange'])
+        state_machine.start()
+        timeout_slot()
+        assert calls == ['orange', 'green']

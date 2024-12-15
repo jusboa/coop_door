@@ -63,21 +63,27 @@ def test_hardware_wiring():
         assert EndSwitch_mock.has_calls([call(4), call(5)])
         assert LightSensor_mock.called_once_with(2)
 
-def test_light_sensor_timer_init(timer_mock, timer_slot, light_sensor_mock):
+def test_refresh_inputs(timer_mock, timer_slot, light_sensor_mock, open_end_switch_mock,
+                        close_end_switch_mock):
     with (patch('coop_door.coop_door.door_controller.Timer') as Timer_mock,
-          patch('coop_door.coop_door.door_controller.LightSensor') as LightSensor_mock):
+          patch('coop_door.coop_door.door_controller.LightSensor') as LightSensor_mock,
+          patch('coop_door.coop_door.door_controller.EndSwitch') as EndSwitch_mock):
         Timer_mock.return_value = timer_mock
         LightSensor_mock.return_value = light_sensor_mock
+        EndSwitch_mock.side_effect = { 4 : open_end_switch_mock, 5 : close_end_switch_mock }.get
+
         period = 321
         DoorController(period)
         assert Timer_mock.called_once()
-        assert Timer_mock.call_args.args[0] == period
-        read_light = Timer_mock.call_args.args[1]
-        read_light()
-        read_light()
-        read_light()
-        assert light_sensor_mock.read_light_intensity.call_count == 3
         assert timer_mock.start.called_once()
+        assert Timer_mock.call_args.args[0] == period
+        refresh_inputs = Timer_mock.call_args.args[1]
+        refresh_inputs()
+        refresh_inputs()
+        refresh_inputs()
+        assert light_sensor_mock.read_light_intensity.call_count == 3
+        assert open_end_switch_mock.read.call_count == 3
+        assert close_end_switch_mock.read.call_count == 3
     
 def test_register_day_slot(light_sensor_mock):
     with (patch('coop_door.coop_door.door_controller.LightSensor') as LightSensor_mock):

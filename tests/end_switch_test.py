@@ -38,12 +38,12 @@ def test_slot_is_called_on_state_change(switch,
                                         pin_mock):
     switch.register_slot(observer_mock)
     pin_mock.value.return_value = False
-    switch.run()
+    switch.read()
     pin_mock.value.return_value = True
-    switch.run()
+    switch.read()
     observer_mock.assert_called_with(False)
     pin_mock.value.return_value = False
-    switch.run()
+    switch.read()
     observer_mock.assert_called_with(True)
     
     
