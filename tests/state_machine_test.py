@@ -1,8 +1,9 @@
 import pytest
 from unittest.mock import MagicMock
 from unittest.mock import patch
+
 import sys
-sys.modules['coop_door.coop_door.timer'] = MagicMock()
+sys.modules['machine'] = MagicMock()
 from ..coop_door.state_machine import StateMachine, State, Signal
 
 @pytest.fixture
@@ -10,10 +11,8 @@ def timer_mock():
     return MagicMock()
 
 @pytest.fixture
-def state_machine(timer_mock):
-    with patch('coop_door.coop_door.state_machine.Timer') as Timer_mock:
-        Timer_mock.return_value = timer_mock
-        return StateMachine()
+def state_machine():
+    return StateMachine()
 
 @pytest.fixture
 def states(state_machine):
@@ -217,7 +216,7 @@ def test_direct_transition_to_child_state(state_machine, states):
     state_machine.send_signal(go)
     assert actions == ['super_state', 'child_state']
     
-def test_state_timeout(state_machine, states):
+def test_time_limites_state_creates_timer(state_machine, states):
     calls = []
     timeout_slot = None
     with patch('coop_door.coop_door.state_machine.Timer') as Timer_mock:
@@ -233,3 +232,28 @@ def test_state_timeout(state_machine, states):
         state_machine.start()
         timeout_slot()
         assert calls == ['orange', 'green']
+
+def test_timer_starts_on_entry(state_machine, states, timer_mock):
+    with patch('coop_door.coop_door.state_machine.Timer') as Timer_mock:
+        Timer_mock.return_value = timer_mock
+        go = Signal()
+        states['red'].on_signal(go).go_to(states['orange'])
+        states['orange'].on_timeout(100).go_to(states['green'])
+        state_machine.set_init_state(states['red'])
+        state_machine.start()
+        state_machine.send_signal(go)
+        timer_mock.start.assert_called_once()
+
+
+def test_timer_stops_on_exit(state_machine, states, timer_mock):
+    with patch('coop_door.coop_door.state_machine.Timer') as Timer_mock:
+        Timer_mock.return_value = timer_mock
+        go = Signal()
+        states['red'].on_signal(go).go_to(states['orange'])
+        states['orange'].on_timeout(100).go_to(states['green'])
+        callback = Timer_mock.call_args.args[1]
+        state_machine.set_init_state(states['red'])
+        state_machine.start()
+        state_machine.send_signal(go)
+        callback()
+        timer_mock.stop.assert_called_once()

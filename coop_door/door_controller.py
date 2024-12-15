@@ -23,20 +23,22 @@ class DoorController():
         closed = State('closed', self.state_machine)
         self.day = Signal()
         power_on.on_signal(self.day).go_to(drive_open)
-        closed.do_on_entry(lambda m=self.motor : m.stop())\
+        closed.do_on_entry(lambda : self.motor.stop())\
               .on_signal(self.day).go_to(drive_open)
         self.night = Signal()
         power_on.on_signal(self.night).go_to(drive_close)
-        opened.do_on_entry(lambda m=self.motor : m.stop())\
+        opened.do_on_entry(lambda : self.motor.stop())\
               .on_signal(self.night).go_to(drive_close)
         self.opened_end_switch_on = Signal()
         self.closed_end_switch_on = Signal()
-        drive_open.do_on_entry(lambda m=self.motor : m.backward())\
+        drive_open.do_on_entry(lambda : self.motor.backward())\
                   .on_signal(self.opened_end_switch_on).go_to(opened)
         drive_open.on_timeout(10000).go_to(opened)
-        drive_close.do_on_entry(lambda m=self.motor : m.forward())\
+        drive_open.on_signal(self.night).go_to(drive_close)
+        drive_close.do_on_entry(lambda : self.motor.forward())\
                    .on_signal(self.closed_end_switch_on).go_to(closed)
         drive_close.on_timeout(10000).go_to(closed)
+        drive_close.on_signal(self.day).go_to(drive_open)
         self.timer = Timer(wake_up_period_ms, self._wake_up)
         # Move following into a start() method
         self.state_machine.start()

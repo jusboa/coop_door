@@ -17,7 +17,7 @@ class Timer():
     def start(self):
         self.machine_timer.init(mode=self.mode,
                                 period=self.timeout_ms,
-                                callback=lambda t,x=self:self.timeout_slot())
+                                callback=lambda t : self.timeout_slot())
 
     def stop(self):
         self.machine_timer.deinit()

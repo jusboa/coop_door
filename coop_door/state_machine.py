@@ -57,6 +57,8 @@ class State():
     def exit(self):
         if self.current_state:
             self.current_state.exit()
+        if self.timer:
+            self.timer.stop()
         if self.exit_action:
             #logging.debug(f'exit action of {self.name}')
             self.exit_action()
@@ -69,7 +71,7 @@ class State():
 
     def on_timeout(self, timeout_ms):
         self.timer = Timer(timeout_ms,
-                           lambda x=self : self.send_signal(self.timeout),
+                           lambda : self.send_signal(self.timeout),
                            Timer.SINGLE_SHOT)
         self.transitions[self.timeout] = Transition(self)
         return self.transitions[self.timeout]

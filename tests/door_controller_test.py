@@ -140,3 +140,19 @@ def test_door_closed_drive_open_in_day(door_controller,
     door_controller.close_switch_slot(True)
     door_controller.day_slot(True)
     motor_mock.backward.assert_called_once()
+
+def test_drive_open_while_closing_and_day_comes(door_controller,
+                                                motor_mock):
+    door_controller.close_switch_slot(False)
+    door_controller.day_slot(False)
+    motor_mock.forward.assert_called_once()
+    door_controller.day_slot(True)
+    motor_mock.backward.assert_called_once()
+
+def test_drive_close_while_opening_and_night_comes(door_controller,
+                                                   motor_mock):
+    door_controller.open_switch_slot(False)
+    door_controller.day_slot(True)
+    motor_mock.backward.assert_called_once()
+    door_controller.day_slot(False)
+    motor_mock.forward.assert_called_once()
