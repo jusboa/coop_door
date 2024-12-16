@@ -6,6 +6,8 @@ import sys
 sys.modules['machine'] = MagicMock()
 from ..coop_door.state_machine import StateMachine, State, Signal
 
+sys.modules['coop_door.coop_door.timer'] = MagicMock()
+
 @pytest.fixture
 def timer_mock():
     return MagicMock()
@@ -257,3 +259,6 @@ def test_timer_stops_on_exit(state_machine, states, timer_mock):
         state_machine.send_signal(go)
         callback()
         timer_mock.stop.assert_called_once()
+
+del sys.modules['machine']
+del sys.modules['coop_door.coop_door.timer']

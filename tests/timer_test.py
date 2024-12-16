@@ -50,3 +50,5 @@ def test_single_shot(machine_timer_mock):
 def test_stop(timer, machine_timer_mock):
     timer.stop()
     machine_timer_mock.deinit.assert_called_once()
+
+del sys.modules['machine']

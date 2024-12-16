@@ -46,5 +46,4 @@ def test_slot_is_called_on_state_change(switch,
     switch.read()
     observer_mock.assert_called_with(True)
     
-    
-    
+del sys.modules['machine']

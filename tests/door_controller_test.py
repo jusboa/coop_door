@@ -156,3 +156,5 @@ def test_drive_close_while_opening_and_night_comes(door_controller,
     motor_mock.backward.assert_called_once()
     door_controller.day_slot(False)
     motor_mock.forward.assert_called_once()
+
+del sys.modules['machine']

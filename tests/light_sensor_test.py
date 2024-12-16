@@ -97,3 +97,4 @@ def test_call_day_slot_on_change(light_sensor,
     light_sensor.read_light_intensity()
     observer_mock.assert_called_with(False)
     
+del sys.modules['machine']

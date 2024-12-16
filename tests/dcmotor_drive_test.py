@@ -64,3 +64,5 @@ def test_is_running(motor):
     assert not motor.is_running()
     motor.forward()
     assert motor.is_running()
+
+del sys.modules['machine']
