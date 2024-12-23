@@ -9,19 +9,32 @@ from ..coop_door.dcmotor_drive import Motor
 
 @pytest.fixture
 def pin_mock():
-    return (MagicMock(), MagicMock())
+    return (MagicMock(), MagicMock(), MagicMock())
 
 @pytest.fixture
 def motor(pin_mock):
     with patch('coop_door.coop_door.dcmotor_drive.Pin') as Pin_mock:
-        Pin_mock.side_effect = [pin_mock[0], pin_mock[1]]
-        return Motor(0, 1)
+        Pin_mock.side_effect = [pin_mock[0], pin_mock[1], pin_mock[2]]
+        return Motor(0, 1, 2)
 
 def test_pin_config():
     with patch('coop_door.coop_door.dcmotor_drive.Pin') as Pin_mock:
         Pin_mock.OUT = 33
-        Motor(0, 1)
-        Pin_mock.assert_has_calls([call(0, 33), call(1, 33)])
+        Motor(0, 1, 2)
+        Pin_mock.assert_has_calls([call(0, 33), call(1, 33), call(2, 33)])
+
+def test_enable_driver_while_driving_motor(motor, pin_mock):
+    motor.forward()
+    pin_mock[2].value.assert_called_once_with(1)
+    pin_mock[2].reset_mock()
+    motor.stop()
+    pin_mock[2].value.assert_called_once_with(0)
+    pin_mock[2].reset_mock()
+    motor.backward()
+    pin_mock[2].value.assert_called_once_with(1)
+    pin_mock[2].reset_mock()
+    motor.stop()
+    pin_mock[2].value.assert_called_once_with(0)
 
 def test_drive_forward(motor, pin_mock):
     motor.forward()

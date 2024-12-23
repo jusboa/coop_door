@@ -1,13 +1,15 @@
 from machine import Pin
 
 class Motor():
-    def __init__(self, gpio0, gpio1):
+    def __init__(self, gpio0, gpio1, gpio_en):
         self.pin0_value = 0
         self.pin1_value = 0
         self.drive_pin0 = Pin(gpio0, Pin.OUT)
         self.drive_pin1 = Pin(gpio1, Pin.OUT)
+        self.enable_pin = Pin(gpio_en, Pin.OUT)
 
     def _drive(self):
+        self.enable_pin.value(1)
         self.drive_pin0.value(self.pin0_value)
         self.drive_pin1.value(self.pin1_value)
 
@@ -24,7 +26,9 @@ class Motor():
     def stop(self):
         self.pin0_value = 0
         self.pin1_value = 0
-        self._drive()
+        self.drive_pin0.value(self.pin0_value)
+        self.drive_pin1.value(self.pin1_value)
+        self.enable_pin.value(0)
 
     def direction(self):
         if (self.pin0_value == 1

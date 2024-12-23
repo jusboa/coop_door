@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 from unittest.mock import call
 
-import time
+from threading import Timer as ThreadTimer
 
 import sys
 sys.modules['machine'] = MagicMock()
@@ -52,16 +52,16 @@ def door_controller(light_sensor_mock,
         LightSensor_mock.return_value = light_sensor_mock
         EndSwitch_mock.side_effect = { 4 : open_end_switch_mock, 5 : close_end_switch_mock }.get
         Timer_mock.return_value = timer_mock
-        return DoorController()
+        return DoorController(wake_up_period_ms=100, door_move_timeout_ms=100)
 
 def test_hardware_wiring():
     with (patch('coop_door.coop_door.door_controller.Motor') as Motor_mock,
           patch('coop_door.coop_door.door_controller.LightSensor') as LightSensor_mock,
           patch('coop_door.coop_door.door_controller.EndSwitch') as EndSwitch_mock):
         DoorController()
-        assert Motor_mock.called_once_with(2, 3)
+        assert Motor_mock.called_once_with(2, 3, 6)
         assert EndSwitch_mock.has_calls([call(4), call(5)])
-        assert LightSensor_mock.called_once_with(2)
+        assert LightSensor_mock.called_once_with(2, 1)
 
 def test_refresh_inputs(timer_mock, timer_slot, light_sensor_mock, open_end_switch_mock,
                         close_end_switch_mock):
@@ -84,7 +84,7 @@ def test_refresh_inputs(timer_mock, timer_slot, light_sensor_mock, open_end_swit
         assert light_sensor_mock.read_light_intensity.call_count == 3
         assert open_end_switch_mock.read.call_count == 3
         assert close_end_switch_mock.read.call_count == 3
-    
+
 def test_register_day_slot(light_sensor_mock):
     with (patch('coop_door.coop_door.door_controller.LightSensor') as LightSensor_mock):
         LightSensor_mock.return_value = light_sensor_mock
