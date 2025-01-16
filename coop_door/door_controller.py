@@ -8,7 +8,7 @@ class DoorController():
     def __init__(self, wake_up_period_ms=100,
                  door_move_timeout_ms=10000):
         self.motor = Motor(2, 3, 6)
-        self.light_sensor = LightSensor(2, 1)
+        self.light_sensor = LightSensor(2, 0)
         self.open_switch = EndSwitch(4)
         self.close_switch = EndSwitch(5)
         self.light_sensor.register_day_slot(self.day_slot)
