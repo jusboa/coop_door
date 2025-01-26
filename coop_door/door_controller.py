@@ -9,8 +9,8 @@ class DoorController():
                  door_move_timeout_ms=10000):
         self.motor = Motor(2, 3, 6)
         self.light_sensor = LightSensor(2, 0)
-        self.open_switch = EndSwitch(4)
-        self.close_switch = EndSwitch(5)
+        self.open_switch = EndSwitch(1)
+        self.close_switch = EndSwitch(2)
         self.light_sensor.register_day_slot(self.day_slot)
         self.open_switch.register_slot(self.open_switch_slot)
         self.close_switch.register_slot(self.close_switch_slot)
