@@ -8,9 +8,9 @@ from ..coop_door.light_sensor import LightSensor
 import math
 
 R_UP_OHM = 10e3
-R_DAY_OHM = 28e3
+R_DAY_OHM = 25e3
 ADC_MAX = 65535 # 15 bits
-R_HYSTERESIS_OHM = 1e3
+R_HYSTERESIS_OHM = 2e3
 
 def ohms_to_adc(ohms):
     return (ADC_MAX * ohms / (ohms + R_UP_OHM))

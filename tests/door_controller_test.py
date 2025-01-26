@@ -10,6 +10,9 @@ import sys
 sys.modules['machine'] = MagicMock()
 from ..coop_door.door_controller import DoorController
 
+OPEN_END_SWITCH_PIN = 1
+CLOSE_END_SWITCH_PIN = 2
+
 @pytest.fixture
 def end_switch_mock():
     return MagicMock()
@@ -50,7 +53,8 @@ def door_controller(light_sensor_mock,
           patch('coop_door.coop_door.door_controller.Timer') as Timer_mock):
         Motor_mock.return_value = motor_mock
         LightSensor_mock.return_value = light_sensor_mock
-        EndSwitch_mock.side_effect = { 4 : open_end_switch_mock, 5 : close_end_switch_mock }.get
+        EndSwitch_mock.side_effect = { OPEN_END_SWITCH_PIN : open_end_switch_mock,
+                                       CLOSE_END_SWITCH_PIN : close_end_switch_mock }.get
         Timer_mock.return_value = timer_mock
         return DoorController(wake_up_period_ms=100, door_move_timeout_ms=100)
 
@@ -60,7 +64,8 @@ def test_hardware_wiring():
           patch('coop_door.coop_door.door_controller.EndSwitch') as EndSwitch_mock):
         DoorController()
         assert Motor_mock.called_once_with(2, 3, 6)
-        assert EndSwitch_mock.has_calls([call(4), call(5)])
+        assert EndSwitch_mock.has_calls([call(OPEN_END_SWITCH_PIN),
+                                         call(CLOSE_END_SWITCH_PIN)])
         assert LightSensor_mock.called_once_with(2, 1)
 
 def test_refresh_inputs(timer_mock, timer_slot, light_sensor_mock, open_end_switch_mock,
@@ -70,7 +75,8 @@ def test_refresh_inputs(timer_mock, timer_slot, light_sensor_mock, open_end_swit
           patch('coop_door.coop_door.door_controller.EndSwitch') as EndSwitch_mock):
         Timer_mock.return_value = timer_mock
         LightSensor_mock.return_value = light_sensor_mock
-        EndSwitch_mock.side_effect = { 4 : open_end_switch_mock, 5 : close_end_switch_mock }.get
+        EndSwitch_mock.side_effect = { OPEN_END_SWITCH_PIN : open_end_switch_mock,
+                                       CLOSE_END_SWITCH_PIN : close_end_switch_mock }.get
 
         period = 321
         DoorController(period)
