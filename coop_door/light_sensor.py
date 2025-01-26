@@ -52,5 +52,5 @@ class LightSensor():
     def is_day(self):
         return self._is_day
 
-    def register_day_slot(self, slot):
+    def register_light_slot(self, slot):
         self.slots.append(slot)

@@ -78,10 +78,10 @@ def test_from_day_to_night(light_sensor, adc_mock):
     adc_mock.read_u16.return_value = ohms_to_adc(R_DAY_OHM + R_HYSTERESIS_OHM + 1)
     assert not light_sensor.read_light_intensity()
 
-def test_call_day_slot_on_change(light_sensor,
-                                 adc_mock,
-                                 observer_mock):
-    light_sensor.register_day_slot(observer_mock)
+def test_call_light_slot_on_change(light_sensor,
+                                   adc_mock,
+                                   observer_mock):
+    light_sensor.register_light_slot(observer_mock)
     adc_mock.read_u16.return_value = ADC_MAX
     light_sensor.read_light_intensity()
     observer_mock.assert_called_with(False)
