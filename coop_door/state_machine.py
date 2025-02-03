@@ -6,10 +6,13 @@ class Transition():
         self.source = source
         self.target = target
         self.action = action
+        self.condition = None
+        self.else_target = None
 
-    def go_to(self, target):
+    def go_to(self, target, condition=None, else_target=None):
+        self.condition = condition
+        self.else_target = else_target
         self.target = target
-        return target
 
     def do(self, action):
         self.action = action
@@ -24,8 +27,9 @@ class State():
         self.exit_action = None
         self.current_state = None
         self.parent = parent
-        self.timeout = Signal()
+        self.timeout = Signal('timeout')
         self.timer = None
+        self.entered = Signal('entered')
 
     def on_signal(self, signal):
         self.transitions[signal] = Transition(self)
@@ -42,14 +46,18 @@ class State():
     def enter(self):
         #logging.debug(f'entering {self.name}')
         if self.timer:
+            #print(f'starting the {self.name} state timer')
             self.timer.start()
         if self.parent:
             self.parent.current_state = self
         if self.entry_action:
             #logging.debug(f'entry action of {self.name}')
+            #print(f'entry action of {self.name}')
             self.entry_action()
+        self.send_signal(self.entered)
 
     def start(self):
+        #print(f'entering {self.name}')
         self.enter()
         if self.init_state:
             self.init_state.start()
@@ -82,7 +90,10 @@ class State():
         transition if not done.
         '''
         # Try to find a common source and target parent.
-        target = transition.target
+        if transition.condition is not None:
+            target = transition.target if transition.condition() else transition.else_target
+        else:
+            target = transition.target
         target_path = [target]
         while target and target.parent is not self.parent:
             target = target.parent
@@ -95,6 +106,7 @@ class State():
             self.exit()
             # Do the transition action.
             if transition.action:
+                #print(f'{transition.source.name}->{transition.target.name} transition action')
                 transition.action()
             # Enter the target state and all its parents.
             # Reverse it to go down in hieararchy - from parent to child
@@ -110,6 +122,7 @@ class State():
             return transition
 
     def send_signal(self, signal):
+        #print(f'signal {signal.name} in state {self.name}')
         if signal in self.transitions.keys():
             return self._try_do_transition(self.transitions[signal])
         elif self.current_state:
@@ -121,7 +134,8 @@ class State():
         return None
 
 class Signal():
-    pass
+    def __init__(self, name='noname'):
+        self.name = name
 
 class StateMachine(State):
     def __init__(self, name='StateMachine'):
@@ -130,3 +144,10 @@ class StateMachine(State):
     def start(self):
         assert self.init_state
         super().start()
+
+class Choice(State):
+    def __init__(self, name, parent=None):
+        super().__init__(name, parent)
+
+    def go_to(self, condition, if_true_target, else_target):
+        self.on_signal(self.entered).go_to(condition, if_true_target, else_target)

@@ -1,10 +1,11 @@
 from .dcmotor_drive import Motor
 from .light_sensor import LightSensor
 from .end_switch import EndSwitch
-from .state_machine import StateMachine, State, Signal
+from .state_machine import StateMachine, State, Signal, Choice
 from .timer import Timer
 
 class DoorController():
+    END_SWITCH_OFF_TIMEOUT_MS = 1000
     def __init__(self, wake_up_period_ms=100,
                  door_move_timeout_ms=10000):
         self.motor = Motor(2, 3, 6)
@@ -16,62 +17,79 @@ class DoorController():
         self.close_switch.register_slot(self.close_switch_slot)
         # State Machine
         # @startuml
-        # [*] --> power_on
-        # power_on --> day : light
+        # state is_light <<choice>>
+        # [*] --> is_light
+        # is_light --> day : [light]
+        # is_light --> night : [dark]
         # state day {
-        #    [*] --> drive_open
+        #    state is_open_switch_on <<choice>>
+        #    [*] --> is_open_switch_on
+        #    is_open_switch_on --> opened : [switch on]
+        #    is_open_switch_on --> drive_open : [switch off]
         #    drive_open : entry : motor backward
-        #    drive_open --> opened : opened_end_switch_on
+        #    drive_open --> opened : switch on
         #    drive_open --> opened : timeout
         #    opened : entry : motor stop
         # }
         # day --> night : dark
-        # power_on --> night : dark
         # state night {
-        #    [*] --> drive_close
+        #    state is_close_switch_on <<choice>>
+        #    [*] --> is_close_switch_on
+        #    is_close_switch_on --> closed : [switch on]
+        #    is_close_switch_on --> drive_close : [switch off]
         #    drive_close : entry : motor forward
-        #    drive_close --> closed : closed_end_switch_on
+        #    drive_close --> closed : switch on
         #    drive_close --> closed : timeout
         #    closed : entry : motor stop
         # }
         # night --> day : light
         # @enduml
         self.state_machine = StateMachine('DoorControllerStateMachine')
-        power_on = State('power_on', self.state_machine)
-        self.state_machine.set_init_state(power_on)
+        start = State('start', self.state_machine)
+        self.state_machine.set_init_state(start)
+
         day = State('day', self.state_machine)
-        night = State('night', self.state_machine)
+        is_open_switch_on = Choice('is_open_switch_on', day)
         drive_open = State('drive_open', day)
-        day.set_init_state(drive_open)
-        drive_close = State('drive_close', night)
-        night.set_init_state(drive_close)
         opened = State('opened', day)
+
+        night = State('night', self.state_machine)
+        is_close_switch_on = Choice('is_close_switch_on', night)
+        drive_close = State('drive_close', night)
         closed = State('closed', night)
-        self.light = Signal()
-        power_on.on_signal(self.light).go_to(day)
-        closed.do_on_entry(lambda : self.motor.stop())
-        night.on_signal(self.light).go_to(day)
-        self.dark = Signal()
-        power_on.on_signal(self.dark).go_to(night)
+
+        self.light = Signal('light')
+        self.dark = Signal('dark')
+        self.open_end_switch_on = Signal('open_switch_on')
+        self.open_end_switch_off = Signal('open_switch_off')
+        self.close_end_switch_off = Signal('close_end_switch_off')
+        self.closed_end_switch_on = Signal('close_end_switch_on')
+
+        start.do_on_entry(lambda:self.timer.start())
+        start.on_signal(self.light).go_to(day)
+        start.on_signal(self.dark).go_to(night)
+
+        day.set_init_state(is_open_switch_on)
+        is_open_switch_on.go_to(opened, self.open_switch.is_on, drive_open)
         opened.do_on_entry(lambda : self.motor.stop())
-        day.on_signal(self.dark).go_to(night)
-        self.opened_end_switch_on = Signal()
-        self.closed_end_switch_on = Signal()
         drive_open.do_on_entry(lambda : self.motor.backward())\
-                  .on_signal(self.opened_end_switch_on).go_to(opened)
+                  .on_signal(self.open_end_switch_on).go_to(opened)
         drive_open.on_timeout(door_move_timeout_ms).go_to(opened)
+        day.on_signal(self.dark).go_to(night)
+
+
+        night.set_init_state(is_close_switch_on)
+        is_close_switch_on.go_to(closed, self.close_switch.is_on, drive_close)
+        closed.do_on_entry(lambda : self.motor.stop())
         drive_close.do_on_entry(lambda : self.motor.forward())\
                    .on_signal(self.closed_end_switch_on).go_to(closed)
         drive_close.on_timeout(door_move_timeout_ms).go_to(closed)
+        night.on_signal(self.light).go_to(day)
+
         self.timer = Timer(wake_up_period_ms, self._wake_up)
-        # Move following into a start() method
-        self.state_machine.start()
-        self.timer.start()
 
     def _wake_up(self):
         self.light_sensor.read_light_intensity()
-        self.open_switch.read()
-        self.close_switch.read()
 
     def light_slot(self, is_light):
         if (is_light):
@@ -81,8 +99,15 @@ class DoorController():
 
     def open_switch_slot(self, is_on):
         if (is_on):
-            self.state_machine.send_signal(self.opened_end_switch_on)
+            self.state_machine.send_signal(self.open_end_switch_on)
+        else:
+            self.state_machine.send_signal(self.open_end_switch_off)
 
     def close_switch_slot(self, is_on):
         if (is_on):
             self.state_machine.send_signal(self.closed_end_switch_on)
+        else:
+            self.state_machine.send_signal(self.close_end_switch_off)
+
+    def start(self):
+        self.state_machine.start()

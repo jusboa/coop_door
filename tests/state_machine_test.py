@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import sys
 sys.modules['machine'] = MagicMock()
-from ..coop_door.state_machine import StateMachine, State, Signal
+from ..coop_door.state_machine import StateMachine, State, Signal, Choice
 
 sys.modules['coop_door.coop_door.timer'] = MagicMock()
 
@@ -259,6 +259,25 @@ def test_timer_stops_on_exit(state_machine, states, timer_mock):
         state_machine.send_signal(go)
         callback()
         timer_mock.stop.assert_called_once()
+
+def test_entered_signal_is_send_on_entry(state_machine, states):
+    state_machine.set_init_state(states['red'])
+    states['red'].on_signal(states['red'].entered).go_to(states['green'])
+    state_machine.start()
+    assert state_machine.current_state is states['green']
+
+def test_choice(state_machine, states):
+    calls = []
+    is_lane_stopped = Choice('is_lane_stopped', state_machine)
+    is_fast_lights = Choice('is_fast_lights', state_machine)
+    states['green'].do_on_entry(lambda x=calls : calls.append('green'))
+    states['red'].do_on_entry(lambda x=calls : calls.append('red'))
+    states['orange'].do_on_entry(lambda x=calls : calls.append('orange'))
+    state_machine.set_init_state(is_lane_stopped)
+    is_lane_stopped.go_to(states['red'], lambda:False, is_fast_lights)
+    is_fast_lights.go_to(states['green'], lambda:True, states['orange'])
+    state_machine.start()
+    assert calls == ['green']
 
 del sys.modules['machine']
 del sys.modules['coop_door.coop_door.timer']
