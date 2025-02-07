@@ -13,9 +13,16 @@ class Motor():
         self.drive_pin0.value(self.pin0_value)
         self.drive_pin1.value(self.pin1_value)
 
-    def forward(self):
-        self.pin0_value = 1
-        self.pin1_value = 0
+    def go(self, direction):
+        if direction > 0:
+            self.pin0_value = 1
+            self.pin1_value = 0
+        elif direction < 0:
+            self.pin0_value = 0
+            self.pin1_value = 1
+        else:
+            # == 0
+            self.stop()
         self._drive()
 
     def backward(self):

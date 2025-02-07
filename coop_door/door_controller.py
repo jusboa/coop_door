@@ -26,7 +26,7 @@ class DoorController():
         #    [*] --> is_open_switch_on
         #    is_open_switch_on --> opened : [switch on]
         #    is_open_switch_on --> drive_open : [switch off]
-        #    drive_open : entry : motor backward
+        #    drive_open : entry : motor go(-1)
         #    drive_open --> opened : switch on
         #    drive_open --> opened : timeout
         #    opened : entry : motor stop
@@ -37,7 +37,7 @@ class DoorController():
         #    [*] --> is_close_switch_on
         #    is_close_switch_on --> closed : [switch on]
         #    is_close_switch_on --> drive_close : [switch off]
-        #    drive_close : entry : motor forward
+        #    drive_close : entry : motor go(+1)
         #    drive_close --> closed : switch on
         #    drive_close --> closed : timeout
         #    closed : entry : motor stop
@@ -72,7 +72,7 @@ class DoorController():
         day.set_init_state(is_open_switch_on)
         is_open_switch_on.go_to(opened, self.open_switch.is_on, drive_open)
         opened.do_on_entry(lambda : self.motor.stop())
-        drive_open.do_on_entry(lambda : self.motor.backward())\
+        drive_open.do_on_entry(lambda : self.motor.go(-1))\
                   .on_signal(self.open_end_switch_on).go_to(opened)
         drive_open.on_timeout(door_move_timeout_ms).go_to(opened)
         day.on_signal(self.dark).go_to(night)
@@ -81,7 +81,7 @@ class DoorController():
         night.set_init_state(is_close_switch_on)
         is_close_switch_on.go_to(closed, self.close_switch.is_on, drive_close)
         closed.do_on_entry(lambda : self.motor.stop())
-        drive_close.do_on_entry(lambda : self.motor.forward())\
+        drive_close.do_on_entry(lambda : self.motor.go(+1))\
                    .on_signal(self.closed_end_switch_on).go_to(closed)
         drive_close.on_timeout(door_move_timeout_ms).go_to(closed)
         night.on_signal(self.light).go_to(day)

@@ -24,36 +24,36 @@ def test_pin_config():
         Pin_mock.assert_has_calls([call(0, 33), call(1, 33), call(2, 33)])
 
 def test_enable_driver_while_driving_motor(motor, pin_mock):
-    motor.forward()
+    motor.go(+1)
     pin_mock[2].value.assert_called_once_with(1)
     pin_mock[2].reset_mock()
     motor.stop()
     pin_mock[2].value.assert_called_once_with(0)
     pin_mock[2].reset_mock()
-    motor.backward()
+    motor.go(-1)
     pin_mock[2].value.assert_called_once_with(1)
     pin_mock[2].reset_mock()
     motor.stop()
     pin_mock[2].value.assert_called_once_with(0)
 
 def test_drive_forward(motor, pin_mock):
-    motor.forward()
+    motor.go(+1)
     pin_mock[0].value.assert_called_once_with(1)
     pin_mock[1].value.assert_called_once_with(0)
 
 def test_drive_backward(motor, pin_mock):
-    motor.backward()
+    motor.go(-1)
     pin_mock[0].value.assert_called_once_with(0)
     pin_mock[1].value.assert_called_once_with(1)
 
 def test_stop_motor(motor, pin_mock):
-    motor.forward()
+    motor.go(+1)
     pin_mock[0].value.reset_mock()
     pin_mock[1].value.reset_mock()
     motor.stop()
     pin_mock[0].value.assert_called_once_with(0)
     pin_mock[1].value.assert_called_once_with(0)
-    motor.backward()
+    motor.go(-1)
     pin_mock[0].value.reset_mock()
     pin_mock[1].value.reset_mock()
     motor.stop()
@@ -62,20 +62,27 @@ def test_stop_motor(motor, pin_mock):
 
 def test_get_direction(motor):
     assert motor.direction() == 0
-    motor.backward()
+    motor.go(-1)
     assert motor.direction() == -1
-    motor.forward()
+    motor.go(+1)
     assert motor.direction() == 1
     motor.stop()
     assert motor.direction() == 0
 
 def test_is_running(motor):
     assert not motor.is_running()
-    motor.backward()
+    motor.go(-1)
     assert motor.is_running()
     motor.stop()
     assert not motor.is_running()
-    motor.forward()
+    motor.go(+1)
     assert motor.is_running()
+
+def test_go_zero_stops_motor(motor):
+    assert not motor.is_running()
+    motor.go(-1)
+    assert motor.is_running()
+    motor.go(0)
+    assert not motor.is_running()
 
 del sys.modules['machine']
