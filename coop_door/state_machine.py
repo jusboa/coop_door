@@ -44,7 +44,7 @@ class State():
         return self
 
     def enter(self):
-        #logging.debug(f'entering {self.name}')
+        #print(f'entering {self.name}')
         if self.timer:
             #print(f'starting the {self.name} state timer')
             self.timer.start()

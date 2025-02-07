@@ -4,6 +4,75 @@ from .end_switch import EndSwitch
 from .state_machine import StateMachine, State, Signal, Choice
 from .timer import Timer
 
+class MotorControl():
+    def __init__(self, start_switch,
+                 stop_switch, motor,
+                 direction, drive_timeout_ms=10000):
+        self.start_switch = start_switch
+        self.stop_switch = stop_switch
+        self.motor = motor
+        self.direction = direction
+
+        # @startuml{motor_control.png}
+        # [*] --> idle
+        # idle --> active : start_request
+        # active --> idle : stop_request
+        # state active {
+        #   state is_switch_on <<choice>>
+        #   [*] --> is_switch_on
+        #   is_switch_on --> end : [stop sw on]
+        #   is_switch_on --> drive_to_end : [stop sw off]
+        #   drive_to_end : entry : motor.go(dir)
+        #   drive_to_end --> end : stop sw on
+        #   drive_to_end --> end : timeout
+        #   end : entry : motor.stop()
+        # }
+        # @enduml
+        self.start_switch_on = Signal('start_switch_on')
+        self.start_switch_off = Signal('start_switch_off')
+        self.stop_switch_off = Signal('stop_switch_off')
+        self.stop_switch_on = Signal('stop_switch_on')
+        self.start_request = Signal('start_request')
+        self.stop_request = Signal('stop_request')
+
+        self.state_machine = StateMachine('MotorControlStateMachine')
+
+        idle = State('idle', self.state_machine)
+        self.state_machine.set_init_state(idle)
+        active = State('active', self.state_machine)
+        idle.on_signal(self.start_request).go_to(active)
+        active.on_signal(self.stop_request).go_to(idle)
+        is_switch_on = Choice('is_switch_on', active)
+        active.set_init_state(is_switch_on)
+        drive_to_end = State('drive_to_end', active)
+        end = State('end', active)
+
+        is_switch_on.go_to(end, self.stop_switch.is_on, drive_to_end)
+        end.do_on_entry(lambda : self.motor.stop())
+        drive_to_end.do_on_entry(lambda : self.motor.go(self.direction))\
+                  .on_signal(self.stop_switch_on).go_to(end)
+        drive_to_end.on_timeout(drive_timeout_ms).go_to(end)
+        
+        self.state_machine.start()
+
+    def start_switch_slot(self, is_on):
+        if (is_on):
+            self.state_machine.send_signal(self.start_switch_on)
+        else:
+            self.state_machine.send_signal(self.start_switch_off)
+
+    def stop_switch_slot(self, is_on):
+        if (is_on):
+            self.state_machine.send_signal(self.stop_switch_on)
+        else:
+            self.state_machine.send_signal(self.stop_switch_off)
+
+    def start(self):
+        self.state_machine.send_signal(self.start_request)
+
+    def stop(self):
+        self.state_machine.send_signal(self.stop_request)
+
 class DoorController():
     END_SWITCH_OFF_TIMEOUT_MS = 1000
     def __init__(self, wake_up_period_ms=100,
@@ -15,75 +84,46 @@ class DoorController():
         self.light_sensor.register_light_slot(self.light_slot)
         self.open_switch.register_slot(self.open_switch_slot)
         self.close_switch.register_slot(self.close_switch_slot)
+        self.drive_open_controller = MotorControl(self.close_switch,
+                                                  self.open_switch,
+                                                  self.motor,
+                                                  -1,
+                                                  door_move_timeout_ms)
+        self.drive_close_controller = MotorControl(self.open_switch,
+                                                   self.close_switch,
+                                                   self.motor,
+                                                   +1,
+                                                   door_move_timeout_ms)
         # State Machine
-        # @startuml
+        # @startuml{door_controller.png} 
         # state is_light <<choice>>
         # [*] --> is_light
         # is_light --> day : [light]
         # is_light --> night : [dark]
-        # state day {
-        #    state is_open_switch_on <<choice>>
-        #    [*] --> is_open_switch_on
-        #    is_open_switch_on --> opened : [switch on]
-        #    is_open_switch_on --> drive_open : [switch off]
-        #    drive_open : entry : motor go(-1)
-        #    drive_open --> opened : switch on
-        #    drive_open --> opened : timeout
-        #    opened : entry : motor stop
-        # }
         # day --> night : dark
-        # state night {
-        #    state is_close_switch_on <<choice>>
-        #    [*] --> is_close_switch_on
-        #    is_close_switch_on --> closed : [switch on]
-        #    is_close_switch_on --> drive_close : [switch off]
-        #    drive_close : entry : motor go(+1)
-        #    drive_close --> closed : switch on
-        #    drive_close --> closed : timeout
-        #    closed : entry : motor stop
-        # }
+        # day : entry : open door
         # night --> day : light
+        # night : entry : close door
         # @enduml
         self.state_machine = StateMachine('DoorControllerStateMachine')
         start = State('start', self.state_machine)
         self.state_machine.set_init_state(start)
 
         day = State('day', self.state_machine)
-        is_open_switch_on = Choice('is_open_switch_on', day)
-        drive_open = State('drive_open', day)
-        opened = State('opened', day)
+        day.do_on_entry(self.drive_open_controller.start)
+        day.do_on_exit(self.drive_open_controller.stop)
 
         night = State('night', self.state_machine)
-        is_close_switch_on = Choice('is_close_switch_on', night)
-        drive_close = State('drive_close', night)
-        closed = State('closed', night)
+        night.do_on_entry(self.drive_close_controller.start)
+        night.do_on_exit(self.drive_close_controller.stop)
 
         self.light = Signal('light')
         self.dark = Signal('dark')
-        self.open_end_switch_on = Signal('open_switch_on')
-        self.open_end_switch_off = Signal('open_switch_off')
-        self.close_end_switch_off = Signal('close_end_switch_off')
-        self.closed_end_switch_on = Signal('close_end_switch_on')
 
         start.do_on_entry(lambda:self.timer.start())
         start.on_signal(self.light).go_to(day)
         start.on_signal(self.dark).go_to(night)
-
-        day.set_init_state(is_open_switch_on)
-        is_open_switch_on.go_to(opened, self.open_switch.is_on, drive_open)
-        opened.do_on_entry(lambda : self.motor.stop())
-        drive_open.do_on_entry(lambda : self.motor.go(-1))\
-                  .on_signal(self.open_end_switch_on).go_to(opened)
-        drive_open.on_timeout(door_move_timeout_ms).go_to(opened)
         day.on_signal(self.dark).go_to(night)
-
-
-        night.set_init_state(is_close_switch_on)
-        is_close_switch_on.go_to(closed, self.close_switch.is_on, drive_close)
-        closed.do_on_entry(lambda : self.motor.stop())
-        drive_close.do_on_entry(lambda : self.motor.go(+1))\
-                   .on_signal(self.closed_end_switch_on).go_to(closed)
-        drive_close.on_timeout(door_move_timeout_ms).go_to(closed)
         night.on_signal(self.light).go_to(day)
 
         self.timer = Timer(wake_up_period_ms, self._wake_up)
@@ -98,16 +138,12 @@ class DoorController():
             self.state_machine.send_signal(self.dark)
 
     def open_switch_slot(self, is_on):
-        if (is_on):
-            self.state_machine.send_signal(self.open_end_switch_on)
-        else:
-            self.state_machine.send_signal(self.open_end_switch_off)
+        self.drive_open_controller.start_switch_slot(is_on)
+        self.drive_close_controller.stop_switch_slot(is_on)
 
     def close_switch_slot(self, is_on):
-        if (is_on):
-            self.state_machine.send_signal(self.closed_end_switch_on)
-        else:
-            self.state_machine.send_signal(self.close_end_switch_off)
+        self.drive_open_controller.stop_switch_slot(is_on)
+        self.drive_close_controller.start_switch_slot(is_on)
 
     def start(self):
         self.state_machine.start()
