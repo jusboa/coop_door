@@ -12,17 +12,27 @@ class MotorControl():
         self.stop_switch = stop_switch
         self.motor = motor
         self.direction = direction
+        detach_from_end_timeout_ms = 1000
 
         # @startuml{motor_control.png}
         # [*] --> idle
         # idle --> active : start_request
         # active --> idle : stop_request
         # state active {
-        #   state is_switch_on <<choice>>
-        #   [*] --> is_switch_on
-        #   is_switch_on --> end : [stop sw on]
-        #   is_switch_on --> drive_to_end : [stop sw off]
-        #   drive_to_end : entry : motor.go(dir)
+        #   state is_stop_switch_on <<choice>>
+        #   [*] --> is_stop_switch_on
+        #   is_stop_switch_on --> end : [stop sw on]
+        #   is_stop_switch_on --> drive_to_end : [stop sw off]
+        #   state drive_to_end {
+        #      state is_start_switch_on <<choice>>
+        #      [*] --> is_start_switch_on
+        #      is_start_switch_on --> wait_start_sw_off : [start sw on]
+        #      is_start_switch_on --> go : [start sw off]
+        #      wait_start_sw_off --> wait_start_sw_off : timeout / dir = -dir
+        #      wait_start_sw_off : entry : motor.go(dir)
+        #      wait_start_sw_off --> go : start sw off
+        #      go : entry : motor.go(dir)
+        #   }
         #   drive_to_end --> end : stop sw on
         #   drive_to_end --> end : timeout
         #   end : entry : motor.stop()
@@ -42,18 +52,32 @@ class MotorControl():
         active = State('active', self.state_machine)
         idle.on_signal(self.start_request).go_to(active)
         active.on_signal(self.stop_request).go_to(idle)
-        is_switch_on = Choice('is_switch_on', active)
-        active.set_init_state(is_switch_on)
+        is_stop_switch_on = Choice('is_stop_switch_on', active)
+        active.set_init_state(is_stop_switch_on)
         drive_to_end = State('drive_to_end', active)
         end = State('end', active)
+        is_start_switch_on = Choice('is_start_switch_on', drive_to_end)
+        wait_start_sw_off = State('wait_start_sw_off', drive_to_end)
+        go = State('go', drive_to_end)
 
-        is_switch_on.go_to(end, self.stop_switch.is_on, drive_to_end)
+        is_stop_switch_on.go_to(end, self.stop_switch.is_on, drive_to_end)
         end.do_on_entry(lambda : self.motor.stop())
-        drive_to_end.do_on_entry(lambda : self.motor.go(self.direction))\
-                  .on_signal(self.stop_switch_on).go_to(end)
+        drive_to_end.on_signal(self.stop_switch_on).go_to(end)
+        drive_to_end.set_init_state(is_start_switch_on)
+        is_start_switch_on.go_to(wait_start_sw_off, self.start_switch.is_on, go)
+        wait_start_sw_off.do_on_entry(lambda : self.motor.go(self.direction))
+        wait_start_sw_off.on_timeout(detach_from_end_timeout_ms)\
+            .do(self._reverse_direction)\
+            .go_to(wait_start_sw_off)
+        wait_start_sw_off.on_signal(self.stop_switch_off).\
+            go_to(go)
+        go.do_on_entry(lambda : self.motor.go(self.direction))
         drive_to_end.on_timeout(drive_timeout_ms).go_to(end)
         
         self.state_machine.start()
+
+    def _reverse_direction(self):
+        self.direction = -self.direction
 
     def start_switch_slot(self, is_on):
         if (is_on):

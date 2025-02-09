@@ -218,7 +218,7 @@ def test_direct_transition_to_child_state(state_machine, states):
     state_machine.send_signal(go)
     assert actions == ['super_state', 'child_state']
     
-def test_time_limites_state_creates_timer(state_machine, states):
+def test_time_limited_state_creates_timer(state_machine, states):
     calls = []
     timeout_slot = None
     with patch('coop_door.coop_door.state_machine.Timer') as Timer_mock:
