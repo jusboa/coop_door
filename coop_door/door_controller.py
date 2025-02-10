@@ -5,6 +5,9 @@ from .state_machine import StateMachine, State, Signal, Choice
 from .timer import Timer
 
 class MotorControl():
+    DETACH_FROM_END_TIMEOUT_MS = 2000
+    DETACH_TRIAL_MAX = 4
+    ERROR_TIMEOUT_MS = 3600 * 1000
     def __init__(self, start_switch,
                  stop_switch, motor,
                  direction, drive_timeout_ms=10000):
@@ -12,12 +15,13 @@ class MotorControl():
         self.stop_switch = stop_switch
         self.motor = motor
         self.direction = direction
-        detach_from_end_timeout_ms = 1000
+        self.detach_trials = 0
 
         # @startuml{motor_control.png}
         # [*] --> idle
         # idle --> active : start_request
         # active --> idle : stop_request
+        # state error
         # state active {
         #   state is_stop_switch_on <<choice>>
         #   [*] --> is_stop_switch_on
@@ -25,17 +29,23 @@ class MotorControl():
         #   is_stop_switch_on --> drive_to_end : [stop sw off]
         #   state drive_to_end {
         #      state is_start_switch_on <<choice>>
+        #      state is_max_trials <<choice>>
         #      [*] --> is_start_switch_on
         #      is_start_switch_on --> wait_start_sw_off : [start sw on]
         #      is_start_switch_on --> go : [start sw off]
-        #      wait_start_sw_off --> wait_start_sw_off : timeout / dir = -dir
+        #      wait_start_sw_off --> is_max_trials : timeout
+        #      is_max_trials --> wait_start_sw_off : [trials <= max] / ++trials, dir = -dir
+        #      is_max_trials --> error : [trials > max]
         #      wait_start_sw_off : entry : motor.go(dir)
         #      wait_start_sw_off --> go : start sw off
         #      go : entry : motor.go(dir)
+        #      drive_to_end : entry : trials = 0
         #   }
         #   drive_to_end --> end : stop sw on
         #   drive_to_end --> end : timeout
         #   end : entry : motor.stop()
+        #   error --> active : timeout
+        #   error --> idle : stop_request
         # }
         # @enduml
         self.start_switch_on = Signal('start_switch_on')
@@ -59,22 +69,35 @@ class MotorControl():
         is_start_switch_on = Choice('is_start_switch_on', drive_to_end)
         wait_start_sw_off = State('wait_start_sw_off', drive_to_end)
         go = State('go', drive_to_end)
+        is_trials_max = Choice('is_trials_max', drive_to_end)
+        error = State('error', self.state_machine)
 
         is_stop_switch_on.go_to(end, self.stop_switch.is_on, drive_to_end)
         end.do_on_entry(lambda : self.motor.stop())
         drive_to_end.on_signal(self.stop_switch_on).go_to(end)
         drive_to_end.set_init_state(is_start_switch_on)
+        drive_to_end.do_on_entry(lambda : self._clear_detach_trials)
         is_start_switch_on.go_to(wait_start_sw_off, self.start_switch.is_on, go)
         wait_start_sw_off.do_on_entry(lambda : self.motor.go(self.direction))
-        wait_start_sw_off.on_timeout(detach_from_end_timeout_ms)\
-            .do(self._reverse_direction)\
-            .go_to(wait_start_sw_off)
+        wait_start_sw_off.on_timeout(MotorControl.DETACH_FROM_END_TIMEOUT_MS)\
+            .go_to(is_trials_max)
+        is_trials_max.do_on_entry(lambda : [self._inc_detach_trials(), self._reverse_direction()])
+        is_trials_max.go_to(wait_start_sw_off, lambda : self.detach_trials < MotorControl.DETACH_TRIAL_MAX, error)
         wait_start_sw_off.on_signal(self.stop_switch_off).\
             go_to(go)
+        error.do_on_entry(lambda : [self.motor.stop(), print('Maximum end-detach trials reached.')])
+        error.on_timeout(MotorControl.ERROR_TIMEOUT_MS).go_to(active)
+        error.on_signal(self.stop_request).go_to(idle)
         go.do_on_entry(lambda : self.motor.go(self.direction))
         drive_to_end.on_timeout(drive_timeout_ms).go_to(end)
         
         self.state_machine.start()
+
+    def _inc_detach_trials(self):
+        self.detach_trials += 1
+
+    def _clear_detach_trials(self):
+        self.detach_trials = 0
 
     def _reverse_direction(self):
         self.direction = -self.direction
@@ -98,7 +121,6 @@ class MotorControl():
         self.state_machine.send_signal(self.stop_request)
 
 class DoorController():
-    END_SWITCH_OFF_TIMEOUT_MS = 1000
     def __init__(self, wake_up_period_ms=100,
                  door_move_timeout_ms=10000):
         self.motor = Motor(2, 3, 6)

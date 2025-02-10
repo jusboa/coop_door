@@ -54,7 +54,8 @@ class State():
             #logging.debug(f'entry action of {self.name}')
             #print(f'entry action of {self.name}')
             self.entry_action()
-        self.send_signal(self.entered)
+        #self.send_signal(self.entered)
+        self._find_topmost_parent().send_signal(self.entered)
 
     def start(self):
         #print(f'entering {self.name}')
@@ -71,7 +72,7 @@ class State():
             #logging.debug(f'exit action of {self.name}')
             self.exit_action()
         self.current_state = None
-        #logging.debug(f'leaving {self.name}')
+        #print(f'leaving {self.name}')
 
     def set_init_state(self, init_state):
         assert init_state.parent is self
@@ -79,7 +80,8 @@ class State():
 
     def on_timeout(self, timeout_ms):
         self.timer = Timer(timeout_ms,
-                           lambda : self.send_signal(self.timeout),
+                           #lambda : self.send_signal(self.timeout),
+                           lambda : self._find_topmost_parent().send_signal(self.timeout),
                            Timer.SINGLE_SHOT)
         self.transitions[self.timeout] = Transition(self)
         return self.transitions[self.timeout]
@@ -131,6 +133,14 @@ class State():
             if transition:
                 # Retry with ammended transition
                 return self._try_do_transition(transition)
+        return None
+
+    def _find_topmost_parent(self):
+        state = self
+        while state:
+            if state.parent is None:
+                return state
+            state = state.parent
         return None
 
 class Signal():
