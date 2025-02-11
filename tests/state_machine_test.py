@@ -262,24 +262,33 @@ def test_timer_stops_on_exit(state_machine, states, timer_mock):
         callback()
         timer_mock.stop.assert_called_once()
 
-def test_entered_signal_is_send_on_entry(state_machine, states):
-    state_machine.set_init_state(states['red'])
-    states['red'].on_signal(states['red'].entered).go_to(states['green'])
-    state_machine.start()
-    assert state_machine.current_state is states['green']
-
 def test_choice(state_machine, states):
     calls = []
     is_lane_stopped = Choice('is_lane_stopped', state_machine)
     is_fast_lights = Choice('is_fast_lights', state_machine)
+    is_lane_stopped.do_on_entry(lambda x=calls : calls.append('is_lane_stopped'))
     states['green'].do_on_entry(lambda x=calls : calls.append('green'))
     states['red'].do_on_entry(lambda x=calls : calls.append('red'))
     states['orange'].do_on_entry(lambda x=calls : calls.append('orange'))
     state_machine.set_init_state(is_lane_stopped)
-    is_lane_stopped.go_to(states['red'], lambda:False, is_fast_lights)
-    is_fast_lights.go_to(states['green'], lambda:True, states['orange'])
+    is_lane_stopped.go_to_if(states['red'], lambda:False)
+    is_lane_stopped.go_to_if(is_fast_lights, lambda:True)
+    is_fast_lights.go_to_if(states['green'], lambda:True)
+    is_fast_lights.go_to_if(states['orange'], lambda:False)
     state_machine.start()
-    assert calls == ['green']
+    assert calls == ['is_lane_stopped', 'green']
+
+def test_choice_actions_are_executed(state_machine, states):
+    calls = []
+    is_lane_stopped = Choice('is_lane_stopped', state_machine)
+    is_fast_lights = Choice('is_fast_lights', state_machine)
+    state_machine.set_init_state(is_lane_stopped)
+    is_lane_stopped.go_to_if(states['red'], lambda:False).do(lambda x=calls : calls.append('red action'))
+    is_lane_stopped.go_to_if(is_fast_lights, lambda:True).do(lambda x=calls : calls.append('fast lights action'))
+    is_fast_lights.go_to_if(states['green'], lambda:True).do(lambda x=calls : calls.append('green action'))
+    is_fast_lights.go_to_if(states['orange'], lambda:False).do(lambda x=calls : calls.append('orange action'))
+    state_machine.start()
+    assert calls == ['fast lights action', 'green action']
 
 del sys.modules['machine']
 del sys.modules['coop_door.coop_door.timer']

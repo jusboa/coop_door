@@ -7,12 +7,11 @@ class Transition():
         self.target = target
         self.action = action
         self.condition = None
-        self.else_target = None
 
-    def go_to(self, target, condition=None, else_target=None):
+    def go_to(self, target, condition=None):
         self.condition = condition
-        self.else_target = else_target
         self.target = target
+        return self
 
     def do(self, action):
         self.action = action
@@ -29,7 +28,8 @@ class State():
         self.parent = parent
         self.timeout = Signal('timeout')
         self.timer = None
-        self.entered = Signal('entered')
+        self.topmost_state = self._find_topmost_state()
+        assert self.topmost_state is not None
 
     def on_signal(self, signal):
         self.transitions[signal] = Transition(self)
@@ -54,8 +54,6 @@ class State():
             #logging.debug(f'entry action of {self.name}')
             #print(f'entry action of {self.name}')
             self.entry_action()
-        #self.send_signal(self.entered)
-        self._find_topmost_parent().send_signal(self.entered)
 
     def start(self):
         #print(f'entering {self.name}')
@@ -80,8 +78,7 @@ class State():
 
     def on_timeout(self, timeout_ms):
         self.timer = Timer(timeout_ms,
-                           #lambda : self.send_signal(self.timeout),
-                           lambda : self._find_topmost_parent().send_signal(self.timeout),
+                           lambda : self.topmost_state.send_signal(self.timeout),
                            Timer.SINGLE_SHOT)
         self.transitions[self.timeout] = Transition(self)
         return self.transitions[self.timeout]
@@ -93,7 +90,7 @@ class State():
         '''
         # Try to find a common source and target parent.
         if transition.condition is not None:
-            target = transition.target if transition.condition() else transition.else_target
+            target = transition.target if transition.condition() else None
         else:
             target = transition.target
         target_path = [target]
@@ -124,18 +121,20 @@ class State():
             return transition
 
     def send_signal(self, signal):
-        #print(f'signal {signal.name} in state {self.name}')
+        # Recurse through parent-child hierarchy of currently active branch
+        # while trying to match source and target parent. When match is found
+        # the transition is performed.
         if signal in self.transitions.keys():
             return self._try_do_transition(self.transitions[signal])
         elif self.current_state:
             # Try active substate
             transition = self.current_state.send_signal(signal)
-            if transition:
-                # Retry with ammended transition
+            if transition is not None:
+                # The transition goes up in the hierarchy
                 return self._try_do_transition(transition)
         return None
 
-    def _find_topmost_parent(self):
+    def _find_topmost_state(self):
         state = self
         while state:
             if state.parent is None:
@@ -158,6 +157,13 @@ class StateMachine(State):
 class Choice(State):
     def __init__(self, name, parent=None):
         super().__init__(name, parent)
+        self.entered = []
 
-    def go_to(self, condition, if_true_target, else_target):
-        self.on_signal(self.entered).go_to(condition, if_true_target, else_target)
+    def go_to_if(self, target, condition):
+        self.entered.append(Signal(f'entered #{len(self.entered)}'))
+        return self.on_signal(self.entered[-1]).go_to(target, condition)
+
+    def enter(self):
+        super().enter()
+        for s in self.entered:
+            self.topmost_state.send_signal(s)

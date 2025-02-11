@@ -192,7 +192,7 @@ def test_day_comes_open_door(door_controller,
     door_controller.light_slot(False)
     open_end_switch_mock.is_on.return_value = False
     door_controller.light_slot(True)
-    open_end_switch_mock.is_on.assert_called_once()
+    motor_mock.go.assert_called_once_with(-1)
 
 def test_day_comes_while_closing_open_door(door_controller,
                                            close_end_switch_mock,
@@ -291,7 +291,7 @@ def test_failed_detach_trials_retry_in_one_hour(door_controller,
     open_end_switch_mock.is_on.return_value = True
     close_end_switch_mock.is_on.return_value = False
     door_controller.light_slot(False)
-    for _ in range(7):
+    for _ in range(3):
         fake_time_elapsed(timers, detach_from_end_timeout_ms)
     motor_mock.reset_mock()
     fake_time_elapsed(timers, 3600 * 1000)

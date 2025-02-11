@@ -33,8 +33,8 @@ class MotorControl():
         #      [*] --> is_start_switch_on
         #      is_start_switch_on --> wait_start_sw_off : [start sw on]
         #      is_start_switch_on --> go : [start sw off]
-        #      wait_start_sw_off --> is_max_trials : timeout
-        #      is_max_trials --> wait_start_sw_off : [trials <= max] / ++trials, dir = -dir
+        #      wait_start_sw_off --> is_max_trials : timeout / ++trials, dir = -dir
+        #      is_max_trials --> wait_start_sw_off : [trials <= max]
         #      is_max_trials --> error : [trials > max]
         #      wait_start_sw_off : entry : motor.go(dir)
         #      wait_start_sw_off --> go : start sw off
@@ -72,23 +72,24 @@ class MotorControl():
         is_trials_max = Choice('is_trials_max', drive_to_end)
         error = State('error', self.state_machine)
 
-        is_stop_switch_on.go_to(end, self.stop_switch.is_on, drive_to_end)
-        end.do_on_entry(lambda : self.motor.stop())
+        is_stop_switch_on.go_to_if(end, self.stop_switch.is_on)
+        is_stop_switch_on.go_to_if(drive_to_end, lambda:not self.stop_switch.is_on())
+        end.do_on_entry(lambda:self.motor.stop())
         drive_to_end.on_signal(self.stop_switch_on).go_to(end)
         drive_to_end.set_init_state(is_start_switch_on)
-        drive_to_end.do_on_entry(lambda : self._clear_detach_trials)
-        is_start_switch_on.go_to(wait_start_sw_off, self.start_switch.is_on, go)
-        wait_start_sw_off.do_on_entry(lambda : self.motor.go(self.direction))
+        drive_to_end.do_on_entry(lambda:self._clear_detach_trials)
+        is_start_switch_on.go_to_if(wait_start_sw_off, self.start_switch.is_on)
+        is_start_switch_on.go_to_if(go, lambda:not self.start_switch.is_on())
+        wait_start_sw_off.do_on_entry(lambda:self.motor.go(self.direction))
         wait_start_sw_off.on_timeout(MotorControl.DETACH_FROM_END_TIMEOUT_MS)\
-            .go_to(is_trials_max)
-        is_trials_max.do_on_entry(lambda : [self._inc_detach_trials(), self._reverse_direction()])
-        is_trials_max.go_to(wait_start_sw_off, lambda : self.detach_trials < MotorControl.DETACH_TRIAL_MAX, error)
-        wait_start_sw_off.on_signal(self.stop_switch_off).\
-            go_to(go)
-        error.do_on_entry(lambda : [self.motor.stop(), print('Maximum end-detach trials reached.')])
+            .go_to(is_trials_max).do(lambda:[self._inc_detach_trials(), self._reverse_direction()])
+        is_trials_max.go_to_if(wait_start_sw_off, lambda:self.detach_trials < MotorControl.DETACH_TRIAL_MAX)
+        is_trials_max.go_to_if(error, lambda:self.detach_trials >= MotorControl.DETACH_TRIAL_MAX)
+        wait_start_sw_off.on_signal(self.stop_switch_off).go_to(go)
+        error.do_on_entry(lambda:[self.motor.stop(), print('Maximum end-detach trials reached.')])
         error.on_timeout(MotorControl.ERROR_TIMEOUT_MS).go_to(active)
         error.on_signal(self.stop_request).go_to(idle)
-        go.do_on_entry(lambda : self.motor.go(self.direction))
+        go.do_on_entry(lambda:self.motor.go(self.direction))
         drive_to_end.on_timeout(drive_timeout_ms).go_to(end)
         
         self.state_machine.start()
@@ -142,10 +143,10 @@ class DoorController():
                                                    door_move_timeout_ms)
         # State Machine
         # @startuml{door_controller.png} 
-        # state is_light <<choice>>
-        # [*] --> is_light
-        # is_light --> day : [light]
-        # is_light --> night : [dark]
+        # state start
+        # [*] --> start
+        # start --> day : light
+        # start --> night : dark
         # day --> night : dark
         # day : entry : open door
         # night --> day : light
