@@ -292,3 +292,4 @@ def test_choice_actions_are_executed(state_machine, states):
 
 del sys.modules['machine']
 del sys.modules['coop_door.coop_door.timer']
+

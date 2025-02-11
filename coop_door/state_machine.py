@@ -1,6 +1,21 @@
 #import logging
 from .timer import Timer
 
+def _find_common_parent(state1, state2):
+    ''' Find a common parent of two state.
+    Return None if not common parent found 
+    '''
+    parent1 = state1.parent
+    parent2 = state2.parent
+    while parent1 is not None:
+        while parent2 is not None:
+            if parent1 == parent2:
+                return parent1
+            parent2 = parent2.parent
+        parent1 = parent1.parent
+        parent2 = state2.parent
+    return None
+
 class Transition():
     def __init__(self, source, target=None, action=None):
         self.source = source
@@ -28,8 +43,6 @@ class State():
         self.parent = parent
         self.timeout = Signal('timeout')
         self.timer = None
-        self.topmost_state = self._find_topmost_state()
-        assert self.topmost_state is not None
 
     def on_signal(self, signal):
         self.transitions[signal] = Transition(self)
@@ -78,69 +91,49 @@ class State():
 
     def on_timeout(self, timeout_ms):
         self.timer = Timer(timeout_ms,
-                           lambda : self.topmost_state.send_signal(self.timeout),
+                           lambda : self.send_signal(self.timeout),
                            Timer.SINGLE_SHOT)
         self.transitions[self.timeout] = Transition(self)
         return self.transitions[self.timeout]
 
-    def _try_do_transition(self, transition):
-        ''' Try to perform the state transtion.
-        Return None if the transition has been done. Return the original
-        transition if not done.
+    def send_signal(self, signal):
+        ''' Try to handle the given signal.
+        Check if state cares about the signal. Exit
+        the state and its substates and parents if jumping up in
+        the hierarchy. Do the transition. Enter target state and
+        its parents if they are not in active branch.
         '''
-        # Try to find a common source and target parent.
-        if transition.condition is not None:
-            target = transition.target if transition.condition() else None
-        else:
-            target = transition.target
-        target_path = [target]
-        while target and target.parent is not self.parent:
-            target = target.parent
-            # Keep track of parents to call entry actions
-            # when entering a target state.
-            target_path.append(target)
-        if target:
-            # Found a common source and target parent.
-            # Exit the source state.
-            self.exit()
-            # Do the transition action.
-            if transition.action:
-                #print(f'{transition.source.name}->{transition.target.name} transition action')
-                transition.action()
-            # Enter the target state and all its parents.
-            # Reverse it to go down in hieararchy - from parent to child
+        if signal in self.transitions.keys():
+            target = self.transitions[signal].target
+            # Transition condition
+            if self.transitions[signal].condition is not None\
+               and not self.transitions[signal].condition():
+                return False
+
+            common_parent = _find_common_parent(self, target)
+
+            # Exit
+            common_parent.current_state.exit()
+
+            # Transition
+            if self.transitions[signal].action:
+                self.transitions[signal].action()
+
+            # Enter
+            target_path = [target]
+            while target.parent is not common_parent:
+                target = target.parent
+                # Keep track of parents to call entry actions
+                # when entering a target state.
+                target_path.append(target)
             target_path.reverse()
             for state in target_path[:-1]:
                 state.enter()
             target_path[-1].start()
 
-            return None
+            return True
         else:
-            # No common parent of source and target found.
-            # Kick it up.
-            return transition
-
-    def send_signal(self, signal):
-        # Recurse through parent-child hierarchy of currently active branch
-        # while trying to match source and target parent. When match is found
-        # the transition is performed.
-        if signal in self.transitions.keys():
-            return self._try_do_transition(self.transitions[signal])
-        elif self.current_state:
-            # Try active substate
-            transition = self.current_state.send_signal(signal)
-            if transition is not None:
-                # The transition goes up in the hierarchy
-                return self._try_do_transition(transition)
-        return None
-
-    def _find_topmost_state(self):
-        state = self
-        while state:
-            if state.parent is None:
-                return state
-            state = state.parent
-        return None
+            return False
 
 class Signal():
     def __init__(self, name='noname'):
@@ -154,6 +147,18 @@ class StateMachine(State):
         assert self.init_state
         super().start()
 
+    def send_signal(self, signal):
+        ''' Handle the given signal.
+        Go through active state machine branch, try find the state
+        that accepts the given signal.
+        '''
+        state = self.current_state
+        while state is not None:
+            if state.send_signal(signal):
+                return True
+            state = state.current_state
+        return False
+            
 class Choice(State):
     def __init__(self, name, parent=None):
         super().__init__(name, parent)
@@ -166,4 +171,4 @@ class Choice(State):
     def enter(self):
         super().enter()
         for s in self.entered:
-            self.topmost_state.send_signal(s)
+            self.send_signal(s)
