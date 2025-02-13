@@ -10,10 +10,11 @@ class MotorControl():
     ERROR_TIMEOUT_MS = 3600 * 1000
     def __init__(self, start_switch,
                  stop_switch, motor,
-                 direction, drive_timeout_ms=10000):
+                 direction, drive_timeout_ms=20000):
         self.start_switch = start_switch
         self.stop_switch = stop_switch
         self.motor = motor
+        self.default_direction = direction
         self.direction = direction
         self.detach_trials = 0
 
@@ -74,18 +75,19 @@ class MotorControl():
 
         is_stop_switch_on.go_to_if(end, self.stop_switch.is_on)
         is_stop_switch_on.go_to_if(drive_to_end, lambda:not self.stop_switch.is_on())
-        end.do_on_entry(lambda:self.motor.stop())
+        end.do_on_entry(self.motor.stop)
         drive_to_end.on_signal(self.stop_switch_on).go_to(end)
         drive_to_end.set_init_state(is_start_switch_on)
-        drive_to_end.do_on_entry(lambda:self._clear_detach_trials)
+        drive_to_end.do_on_entry(self._clear_detach_trials)
         is_start_switch_on.go_to_if(wait_start_sw_off, self.start_switch.is_on)
         is_start_switch_on.go_to_if(go, lambda:not self.start_switch.is_on())
         wait_start_sw_off.do_on_entry(lambda:self.motor.go(self.direction))
         wait_start_sw_off.on_timeout(MotorControl.DETACH_FROM_END_TIMEOUT_MS)\
             .go_to(is_trials_max).do(lambda:[self._inc_detach_trials(), self._reverse_direction()])
-        is_trials_max.go_to_if(wait_start_sw_off, lambda:self.detach_trials < MotorControl.DETACH_TRIAL_MAX)
-        is_trials_max.go_to_if(error, lambda:self.detach_trials >= MotorControl.DETACH_TRIAL_MAX)
-        wait_start_sw_off.on_signal(self.stop_switch_off).go_to(go)
+        is_trials_max.go_to_if(wait_start_sw_off, lambda:self.detach_trials <= MotorControl.DETACH_TRIAL_MAX)
+        is_trials_max.go_to_if(error, lambda:self.detach_trials > MotorControl.DETACH_TRIAL_MAX)\
+            .do(self._reset_direction)
+        wait_start_sw_off.on_signal(self.start_switch_off).go_to(go)
         error.do_on_entry(lambda:[self.motor.stop(), print('Maximum end-detach trials reached.')])
         error.on_timeout(MotorControl.ERROR_TIMEOUT_MS).go_to(active)
         error.on_signal(self.stop_request).go_to(idle)
@@ -102,6 +104,9 @@ class MotorControl():
 
     def _reverse_direction(self):
         self.direction = -self.direction
+
+    def _reset_direction(self):
+        self.direction = self.default_direction
 
     def start_switch_slot(self, is_on):
         if (is_on):
@@ -123,8 +128,8 @@ class MotorControl():
 
 class DoorController():
     def __init__(self, wake_up_period_ms=100,
-                 door_move_timeout_ms=10000):
-        self.motor = Motor(2, 3, 6)
+                 door_move_timeout_ms=20000):
+        self.motor = Motor(14, 15, 6)
         self.light_sensor = LightSensor(2, 0)
         self.open_switch = EndSwitch(1)
         self.close_switch = EndSwitch(2)
@@ -185,12 +190,14 @@ class DoorController():
             self.state_machine.send_signal(self.dark)
 
     def open_switch_slot(self, is_on):
-        self.drive_open_controller.start_switch_slot(is_on)
-        self.drive_close_controller.stop_switch_slot(is_on)
-
-    def close_switch_slot(self, is_on):
+        #print(f'open switch = {is_on}')
         self.drive_open_controller.stop_switch_slot(is_on)
         self.drive_close_controller.start_switch_slot(is_on)
+
+    def close_switch_slot(self, is_on):
+        #print(f'close switch = {is_on}')
+        self.drive_open_controller.start_switch_slot(is_on)
+        self.drive_close_controller.stop_switch_slot(is_on)
 
     def start(self):
         self.state_machine.start()

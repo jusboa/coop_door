@@ -12,6 +12,8 @@ class Motor():
         self.enable_pin.value(1)
         self.drive_pin0.value(self.pin0_value)
         self.drive_pin1.value(self.pin1_value)
+        #print(f'pin0 value = {self.pin0_value}')
+        #print(f'pin1 value = {self.pin1_value}')
 
     def go(self, direction):
         if direction > 0:

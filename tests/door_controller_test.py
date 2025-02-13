@@ -94,10 +94,10 @@ def test_hardware_wiring():
           patch('coop_door.coop_door.door_controller.LightSensor') as LightSensor_mock,
           patch('coop_door.coop_door.door_controller.EndSwitch') as EndSwitch_mock):
         DoorController()
-        assert Motor_mock.called_once_with(2, 3, 6)
-        assert EndSwitch_mock.has_calls([call(OPEN_END_SWITCH_PIN),
-                                         call(CLOSE_END_SWITCH_PIN)])
-        assert LightSensor_mock.called_once_with(2, 1)
+        Motor_mock.assert_called_once_with(14, 15, 6)
+        EndSwitch_mock.has_calls([call(OPEN_END_SWITCH_PIN),
+                                  call(CLOSE_END_SWITCH_PIN)])
+        LightSensor_mock.assert_called_once_with(2, 0)
 
 def test_refresh_inputs(timer_mock, light_sensor_mock, open_end_switch_mock,
                         close_end_switch_mock):
@@ -223,9 +223,9 @@ def test_reverse_motor_on_stuck_close_end(door_controller,
     open_end_switch_mock.is_on.return_value = False
     close_end_switch_mock.is_on.return_value = True
     door_controller.light_slot(True)
-    for _ in range(3):
+    for _ in range(4):
         fake_time_elapsed(timers, detach_from_end_timeout_ms)
-    motor_mock.go.assert_has_calls([call(-1), call(1), call(-1), call(1)])
+    motor_mock.go.assert_has_calls([call(-1), call(1), call(-1), call(1), call(-1)])
 
 def test_motor_keeps_on_when_close_switch_opens(door_controller,
                                                 open_end_switch_mock,
@@ -275,7 +275,7 @@ def test_reverse_motor_limited_times_on_stuck_end(door_controller,
     open_end_switch_mock.is_on.return_value = True
     close_end_switch_mock.is_on.return_value = False
     door_controller.light_slot(False)
-    for _ in range(3):
+    for _ in range(4):
         fake_time_elapsed(timers, detach_from_end_timeout_ms)
     motor_mock.reset_mock()
     fake_time_elapsed(timers, detach_from_end_timeout_ms)
@@ -291,8 +291,9 @@ def test_failed_detach_trials_retry_in_one_hour(door_controller,
     open_end_switch_mock.is_on.return_value = True
     close_end_switch_mock.is_on.return_value = False
     door_controller.light_slot(False)
-    for _ in range(3):
+    for _ in range(5):
         fake_time_elapsed(timers, detach_from_end_timeout_ms)
+    motor_mock.stop.assert_called_once()
     motor_mock.reset_mock()
     fake_time_elapsed(timers, 3600 * 1000)
     motor_mock.go.assert_called_once_with(1)

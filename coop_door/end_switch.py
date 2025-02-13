@@ -4,7 +4,7 @@ from machine import Pin
 class EndSwitch:
     def __init__(self, pin_number):
         self.pin = Pin(pin_number, Pin.IN, Pin.PULL_UP)
-        self.pin.irq(handler=self._irq_handler, trigger=Pin.IRQ_FALLING)
+        self.pin.irq(handler=self._irq_handler, trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING)
         self.last_state = None
         self.slots = []
 

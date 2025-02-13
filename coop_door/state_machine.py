@@ -78,6 +78,7 @@ class State():
         if self.current_state:
             self.current_state.exit()
         if self.timer:
+            #print(f'stopping the {self.name} state timer')
             self.timer.stop()
         if self.exit_action:
             #logging.debug(f'exit action of {self.name}')
@@ -104,6 +105,7 @@ class State():
         its parents if they are not in active branch.
         '''
         if signal in self.transitions.keys():
+            #print(f'signal {signal.name} in state {self.name}')
             target = self.transitions[signal].target
             # Transition condition
             if self.transitions[signal].condition is not None\
