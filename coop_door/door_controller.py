@@ -3,11 +3,11 @@ from .light_sensor import LightSensor
 from .end_switch import EndSwitch
 from .state_machine import StateMachine, State, Signal, Choice
 from .timer import Timer
+from machine import Pin
 
 class MotorControl():
     DETACH_FROM_END_TIMEOUT_MS = 2000
     DETACH_TRIAL_MAX = 4
-    ERROR_TIMEOUT_MS = 3600 * 1000
     def __init__(self, start_switch,
                  stop_switch, motor,
                  direction, drive_timeout_ms=20000):
@@ -17,12 +17,12 @@ class MotorControl():
         self.default_direction = direction
         self.direction = direction
         self.detach_trials = 0
+        self.finish_slots = []
 
         # @startuml{motor_control.png}
         # [*] --> idle
         # idle --> active : start_request
         # active --> idle : stop_request
-        # state error
         # state active {
         #   state is_stop_switch_on <<choice>>
         #   [*] --> is_stop_switch_on
@@ -36,17 +36,15 @@ class MotorControl():
         #      is_start_switch_on --> go : [start sw off]
         #      wait_start_sw_off --> is_max_trials : timeout / ++trials, dir = -dir
         #      is_max_trials --> wait_start_sw_off : [trials <= max]
-        #      is_max_trials --> error : [trials > max]
+        #      is_max_trials --> end : [trials > max] : report error
         #      wait_start_sw_off : entry : motor.go(dir)
         #      wait_start_sw_off --> go : start sw off
         #      go : entry : motor.go(dir)
         #      drive_to_end : entry : trials = 0
         #   }
         #   drive_to_end --> end : stop sw on
-        #   drive_to_end --> end : timeout
-        #   end : entry : motor.stop()
-        #   error --> active : timeout
-        #   error --> idle : stop_request
+        #   drive_to_end --> end : timeout : report error
+        #   end : entry : motor.stop(), report finished
         # }
         # @enduml
         self.start_switch_on = Signal('start_switch_on')
@@ -71,11 +69,10 @@ class MotorControl():
         wait_start_sw_off = State('wait_start_sw_off', drive_to_end)
         go = State('go', drive_to_end)
         is_trials_max = Choice('is_trials_max', drive_to_end)
-        error = State('error', self.state_machine)
 
         is_stop_switch_on.go_to_if(end, self.stop_switch.is_on)
         is_stop_switch_on.go_to_if(drive_to_end, lambda:not self.stop_switch.is_on())
-        end.do_on_entry(self.motor.stop)
+        end.do_on_entry(self._end_entry)
         drive_to_end.on_signal(self.stop_switch_on).go_to(end)
         drive_to_end.set_init_state(is_start_switch_on)
         drive_to_end.do_on_entry(self._clear_detach_trials)
@@ -85,16 +82,22 @@ class MotorControl():
         wait_start_sw_off.on_timeout(MotorControl.DETACH_FROM_END_TIMEOUT_MS)\
             .go_to(is_trials_max).do(lambda:[self._inc_detach_trials(), self._reverse_direction()])
         is_trials_max.go_to_if(wait_start_sw_off, lambda:self.detach_trials <= MotorControl.DETACH_TRIAL_MAX)
-        is_trials_max.go_to_if(error, lambda:self.detach_trials > MotorControl.DETACH_TRIAL_MAX)\
-            .do(self._reset_direction)
+        is_trials_max.go_to_if(end, lambda:self.detach_trials > MotorControl.DETACH_TRIAL_MAX)\
+            .do(lambda:[self._reset_direction(), print('Maximum end-detach trials reached.')])
         wait_start_sw_off.on_signal(self.start_switch_off).go_to(go)
-        error.do_on_entry(lambda:[self.motor.stop(), print('Maximum end-detach trials reached.')])
-        error.on_timeout(MotorControl.ERROR_TIMEOUT_MS).go_to(active)
-        error.on_signal(self.stop_request).go_to(idle)
         go.do_on_entry(lambda:self.motor.go(self.direction))
-        drive_to_end.on_timeout(drive_timeout_ms).go_to(end)
+        drive_to_end.on_timeout(drive_timeout_ms).do(lambda:print('Failed to close/open the door in time.')).go_to(end)
         
         self.state_machine.start()
+
+    def _end_entry(self):
+        print("stopping motor")
+        self.motor.stop()
+        self._report_finished()
+
+    def _report_finished(self):
+        for slot in self.finish_slots:
+            slot()
 
     def _inc_detach_trials(self):
         self.detach_trials += 1
@@ -121,13 +124,18 @@ class MotorControl():
             self.state_machine.send_signal(self.stop_switch_off)
 
     def start(self):
+        print("start")
         self.state_machine.send_signal(self.start_request)
 
     def stop(self):
+        print("stop")
         self.state_machine.send_signal(self.stop_request)
 
+    def register_finish_slot(self, slot):
+        self.finish_slots.append(slot)
+
 class DoorController():
-    def __init__(self, wake_up_period_ms=100,
+    def __init__(self, wake_up_period_ms=20,
                  door_move_timeout_ms=20000):
         self.motor = Motor(14, 15, 6)
         self.light_sensor = LightSensor(2, 0)
@@ -146,6 +154,8 @@ class DoorController():
                                                    self.motor,
                                                    +1,
                                                    door_move_timeout_ms)
+        self.sleep_pin = Pin(22, Pin.OUT)
+
         # State Machine
         # @startuml{door_controller.png} 
         # state start
@@ -153,35 +163,72 @@ class DoorController():
         # start --> day : light
         # start --> night : dark
         # day --> night : dark
-        # day : entry : open door
+        # state day {
+        #    state "finish" as finish_day
+        #    [*] --> open_door
+        #    open_door : entry: start motor_control
+        #    open_door : exit : stop motor_control
+        #    open_door --> finish_day : finished
+        #    finish_day : entry : sleep
+        # }
         # night --> day : light
-        # night : entry : close door
+        # state night {
+        #    state "finish" as finish_night
+        #    [*] --> close_door
+        #    close_door : entry : start motor_control
+        #    close_door : exit : stop motor_control
+        #    close_door --> finish_night : finished
+        #    finish_night : entry : sleep
+        # }
         # @enduml
         self.state_machine = StateMachine('DoorControllerStateMachine')
         start = State('start', self.state_machine)
         self.state_machine.set_init_state(start)
 
         day = State('day', self.state_machine)
-        day.do_on_entry(self.drive_open_controller.start)
-        day.do_on_exit(self.drive_open_controller.stop)
+        open_door = State('open_door', day)
+        finish_day = State('finish_day', day)
+        day.set_init_state(open_door)
 
         night = State('night', self.state_machine)
-        night.do_on_entry(self.drive_close_controller.start)
-        night.do_on_exit(self.drive_close_controller.stop)
+        close_door = State('close_door', night)
+        finish_night = State('finish_night', night)
+        night.set_init_state(close_door)
 
         self.light = Signal('light')
         self.dark = Signal('dark')
+        self.finished = Signal('finished')
 
         start.do_on_entry(lambda:self.timer.start())
         start.on_signal(self.light).go_to(day)
-        start.on_signal(self.dark).go_to(night)
         day.on_signal(self.dark).go_to(night)
+        open_door.on_signal(self.finished).go_to(finish_day)
+        open_door.do_on_entry(self.drive_open_controller.start)
+        open_door.do_on_exit(self.drive_open_controller.stop)
+        finish_day.do_on_entry(self._sleep)
+
+        start.on_signal(self.dark).go_to(night)
         night.on_signal(self.light).go_to(day)
+        close_door.on_signal(self.finished).go_to(finish_night)
+        close_door.do_on_entry(self.drive_close_controller.start)
+        close_door.do_on_exit(self.drive_close_controller.stop)
+        finish_night.do_on_entry(self._sleep)
+
+        self.drive_close_controller.register_finish_slot(
+            lambda:self.state_machine.send_signal(self.finished))
+        self.drive_open_controller.register_finish_slot(
+            lambda:self.state_machine.send_signal(self.finished))
 
         self.timer = Timer(wake_up_period_ms, self._wake_up)
 
+    def _sleep(self):
+        self.sleep_pin.value(1)
+
     def _wake_up(self):
         self.light_sensor.read_light_intensity()
+        self.drive_open_controller.state_machine.wakeup()
+        self.drive_close_controller.state_machine.wakeup()
+        self.state_machine.wakeup()
 
     def light_slot(self, is_light):
         if (is_light):

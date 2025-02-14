@@ -48,6 +48,10 @@ def fake_time_elapsed(timers, elapsed_time_ms):
 @pytest.fixture
 def timers():
     return []
+
+@pytest.fixture
+def sleep_pin_mock():
+    return MagicMock()
     
 @pytest.fixture
 def door_controller_factory(light_sensor_mock,
@@ -55,14 +59,17 @@ def door_controller_factory(light_sensor_mock,
                             open_end_switch_mock,
                             motor_mock,
                             timers,
-                            timer_mock_factory):
+                            timer_mock_factory,
+                            sleep_pin_mock):
     def make_door_controller():
         with (patch('coop_door.coop_door.door_controller.Motor') as Motor_mock,
               patch('coop_door.coop_door.door_controller.LightSensor') as LightSensor_mock,
               patch('coop_door.coop_door.door_controller.EndSwitch') as EndSwitch_mock,
-              patch('coop_door.coop_door.state_machine.Timer') as StateTimer_mock):
+              patch('coop_door.coop_door.state_machine.Timer') as StateTimer_mock,
+              patch('coop_door.coop_door.door_controller.Pin') as Pin_mock):
             Motor_mock.return_value = motor_mock
             LightSensor_mock.return_value = light_sensor_mock
+            Pin_mock.return_value = sleep_pin_mock
             EndSwitch_mock.side_effect = { OPEN_END_SWITCH_PIN : open_end_switch_mock,
                                            CLOSE_END_SWITCH_PIN : close_end_switch_mock }.get
             return_value = []
@@ -92,12 +99,15 @@ def detach_from_end_timeout_ms():
 def test_hardware_wiring():
     with (patch('coop_door.coop_door.door_controller.Motor') as Motor_mock,
           patch('coop_door.coop_door.door_controller.LightSensor') as LightSensor_mock,
-          patch('coop_door.coop_door.door_controller.EndSwitch') as EndSwitch_mock):
+          patch('coop_door.coop_door.door_controller.EndSwitch') as EndSwitch_mock,
+          patch('coop_door.coop_door.door_controller.Pin') as Pin_mock):
+        Pin_mock.OUT = 33
         DoorController()
         Motor_mock.assert_called_once_with(14, 15, 6)
         EndSwitch_mock.has_calls([call(OPEN_END_SWITCH_PIN),
                                   call(CLOSE_END_SWITCH_PIN)])
         LightSensor_mock.assert_called_once_with(2, 0)
+        Pin_mock.assert_called_once_with(22, 33)
 
 def test_refresh_inputs(timer_mock, light_sensor_mock, open_end_switch_mock,
                         close_end_switch_mock):
@@ -282,20 +292,20 @@ def test_reverse_motor_limited_times_on_stuck_end(door_controller,
     motor_mock.go.assert_not_called()
     motor_mock.stop.assert_called_once()
 
-def test_failed_detach_trials_retry_in_one_hour(door_controller,
-                                                open_end_switch_mock,
-                                                close_end_switch_mock,
-                                                motor_mock,
-                                                detach_from_end_timeout_ms,
-                                                timers):
-    open_end_switch_mock.is_on.return_value = True
-    close_end_switch_mock.is_on.return_value = False
+def test_sleep_after_door_open(door_controller,
+                               open_end_switch_mock,
+                               sleep_pin_mock):
+    open_end_switch_mock.read.side_effect = lambda:door_controller.open_switch_slot(False)
+    door_controller.light_slot(True)
+    door_controller.open_switch_slot(True)
+    sleep_pin_mock.value.called_once_with(1)
+
+def test_sleep_after_door_close(door_controller,
+                                close_end_switch_mock,
+                                sleep_pin_mock):
+    close_end_switch_mock.read.side_effect = lambda:door_controller.close_switch_slot(False)
     door_controller.light_slot(False)
-    for _ in range(5):
-        fake_time_elapsed(timers, detach_from_end_timeout_ms)
-    motor_mock.stop.assert_called_once()
-    motor_mock.reset_mock()
-    fake_time_elapsed(timers, 3600 * 1000)
-    motor_mock.go.assert_called_once_with(1)
+    door_controller.close_switch_slot(True)
+    sleep_pin_mock.value.called_once_with(1)
 
 del sys.modules['machine']

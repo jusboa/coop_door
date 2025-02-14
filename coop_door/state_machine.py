@@ -57,7 +57,7 @@ class State():
         return self
 
     def enter(self):
-        #print(f'entering {self.name}')
+        print(f'entering {self.name}')
         if self.timer:
             #print(f'starting the {self.name} state timer')
             self.timer.start()
@@ -105,7 +105,7 @@ class State():
         its parents if they are not in active branch.
         '''
         if signal in self.transitions.keys():
-            #print(f'signal {signal.name} in state {self.name}')
+            print(f'signal {signal.name} in state {self.name}')
             target = self.transitions[signal].target
             # Transition condition
             if self.transitions[signal].condition is not None\
@@ -144,12 +144,16 @@ class Signal():
 class StateMachine(State):
     def __init__(self, name='StateMachine'):
         super().__init__(name)
+        self.signal_stack = []
 
     def start(self):
         assert self.init_state
         super().start()
 
     def send_signal(self, signal):
+        self.signal_stack.append(signal)
+
+    def process_signal(self, signal):
         ''' Handle the given signal.
         Go through active state machine branch, try find the state
         that accepts the given signal.
@@ -160,6 +164,11 @@ class StateMachine(State):
                 return True
             state = state.current_state
         return False
+
+    def wakeup(self):
+        if len(self.signal_stack) > 0:
+            self.process_signal(self.signal_stack.pop(0))
+        
             
 class Choice(State):
     def __init__(self, name, parent=None):
