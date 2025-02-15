@@ -147,6 +147,7 @@ def test_day_on_power_up_open_door(door_controller_factory,
     controller = door_controller_factory()
     controller.start()
     controller.light_slot(True)
+    controller.do_all()
     motor_mock.go.assert_called_once_with(-1)
 
 def test_day_comes_door_opened_motor_stays_still(door_controller,
@@ -154,6 +155,7 @@ def test_day_comes_door_opened_motor_stays_still(door_controller,
                                                  motor_mock):
     open_end_switch_mock.read.side_effect = lambda:door_controller.open_switch_slot(True)
     door_controller.light_slot(True)
+    door_controller.do_all()
     motor_mock.go.assert_not_called()
 
 def test_night_on_power_up_close_door(door_controller_factory,
@@ -163,6 +165,7 @@ def test_night_on_power_up_close_door(door_controller_factory,
     controller = door_controller_factory()
     controller.start()
     controller.light_slot(False)
+    controller.do_all()
     motor_mock.go.assert_called_once_with(+1)
 
 def test_night_comes_door_closed_motor_stays_still(door_controller,
@@ -170,6 +173,7 @@ def test_night_comes_door_closed_motor_stays_still(door_controller,
                                                    motor_mock):
     close_end_switch_mock.read.side_effect = lambda:door_controller.close_switch_slot(True)
     door_controller.light_slot(False)
+    door_controller.do_all()
     motor_mock.go.assert_not_called()
 
 def test_motor_stops_when_open_end_switch_hit(door_controller,
@@ -178,6 +182,7 @@ def test_motor_stops_when_open_end_switch_hit(door_controller,
     open_end_switch_mock.read.side_effect = lambda:door_controller.open_switch_slot(False)
     door_controller.light_slot(True)
     door_controller.open_switch_slot(True)
+    door_controller.do_all()
     motor_mock.stop.assert_called_once()
 
 def test_motor_stops_when_close_end_switch_hit(door_controller,
@@ -186,6 +191,7 @@ def test_motor_stops_when_close_end_switch_hit(door_controller,
     close_end_switch_mock.read.side_effect = lambda:door_controller.close_switch_slot(False)
     door_controller.light_slot(False)
     door_controller.close_switch_slot(True)
+    door_controller.do_all()
     motor_mock.stop.assert_called_once()
 
 def test_night_comes_close_door(door_controller,
@@ -194,6 +200,7 @@ def test_night_comes_close_door(door_controller,
     door_controller.light_slot(True)
     close_end_switch_mock.is_on.return_value = False
     door_controller.light_slot(False)
+    door_controller.do_all()
     motor_mock.go.assert_called_once_with(+1)
 
 def test_day_comes_open_door(door_controller,
@@ -202,6 +209,7 @@ def test_day_comes_open_door(door_controller,
     door_controller.light_slot(False)
     open_end_switch_mock.is_on.return_value = False
     door_controller.light_slot(True)
+    door_controller.do_all()
     motor_mock.go.assert_called_once_with(-1)
 
 def test_day_comes_while_closing_open_door(door_controller,
@@ -212,6 +220,7 @@ def test_day_comes_while_closing_open_door(door_controller,
     door_controller.light_slot(False)
     open_end_switch_mock.is_on.return_value = False
     door_controller.light_slot(True)
+    door_controller.do_all()
     motor_mock.go.assert_has_calls([call(+1), call(-1)])
 
 def test_night_comes_while_opening_close_door(door_controller,
@@ -222,6 +231,7 @@ def test_night_comes_while_opening_close_door(door_controller,
     door_controller.light_slot(True)
     close_end_switch_mock.is_on.return_value = False
     door_controller.light_slot(False)
+    door_controller.do_all()
     motor_mock.go.assert_has_calls([call(-1), call(+1)])
 
 def test_reverse_motor_on_stuck_close_end(door_controller,
@@ -233,8 +243,10 @@ def test_reverse_motor_on_stuck_close_end(door_controller,
     open_end_switch_mock.is_on.return_value = False
     close_end_switch_mock.is_on.return_value = True
     door_controller.light_slot(True)
+    door_controller.do_all()
     for _ in range(4):
         fake_time_elapsed(timers, detach_from_end_timeout_ms)
+    door_controller.do_all()
     motor_mock.go.assert_has_calls([call(-1), call(1), call(-1), call(1), call(-1)])
 
 def test_motor_keeps_on_when_close_switch_opens(door_controller,
@@ -246,8 +258,10 @@ def test_motor_keeps_on_when_close_switch_opens(door_controller,
     open_end_switch_mock.is_on.return_value = False
     close_end_switch_mock.is_on.return_value = True
     door_controller.light_slot(True)
+    door_controller.do_all()
     fake_time_elapsed(timers, detach_from_end_timeout_ms)
     door_controller.close_switch_slot(False)
+    door_controller.do_all()
     motor_mock.go.assert_has_calls([call(-1), call(1), call(1)])
 
 def test_reverse_motor_on_stuck_open_end(door_controller,
@@ -259,8 +273,10 @@ def test_reverse_motor_on_stuck_open_end(door_controller,
     open_end_switch_mock.is_on.return_value = True
     close_end_switch_mock.is_on.return_value = False
     door_controller.light_slot(False)
+    door_controller.do_all()
     for _ in range(3):
         fake_time_elapsed(timers, detach_from_end_timeout_ms)
+    door_controller.do_all()
     motor_mock.go.assert_has_calls([call(1), call(-1), call(1), call(-1)])
 
 def test_motor_keeps_on_when_open_switch_opens(door_controller,
@@ -272,8 +288,10 @@ def test_motor_keeps_on_when_open_switch_opens(door_controller,
     open_end_switch_mock.is_on.return_value = True
     close_end_switch_mock.is_on.return_value = False
     door_controller.light_slot(False)
+    door_controller.do_all()
     fake_time_elapsed(timers, detach_from_end_timeout_ms)
     door_controller.open_switch_slot(False)
+    door_controller.do_all()
     motor_mock.go.assert_has_calls([call(1), call(-1), call(-1)])
 
 def test_reverse_motor_limited_times_on_stuck_end(door_controller,
@@ -285,10 +303,13 @@ def test_reverse_motor_limited_times_on_stuck_end(door_controller,
     open_end_switch_mock.is_on.return_value = True
     close_end_switch_mock.is_on.return_value = False
     door_controller.light_slot(False)
+    door_controller.do_all()
     for _ in range(4):
         fake_time_elapsed(timers, detach_from_end_timeout_ms)
+    door_controller.do_all()
     motor_mock.reset_mock()
     fake_time_elapsed(timers, detach_from_end_timeout_ms)
+    door_controller.do_all()
     motor_mock.go.assert_not_called()
     motor_mock.stop.assert_called_once()
 
@@ -298,6 +319,7 @@ def test_sleep_after_door_open(door_controller,
     open_end_switch_mock.read.side_effect = lambda:door_controller.open_switch_slot(False)
     door_controller.light_slot(True)
     door_controller.open_switch_slot(True)
+    door_controller.do_all()
     sleep_pin_mock.value.called_once_with(1)
 
 def test_sleep_after_door_close(door_controller,
@@ -306,6 +328,7 @@ def test_sleep_after_door_close(door_controller,
     close_end_switch_mock.read.side_effect = lambda:door_controller.close_switch_slot(False)
     door_controller.light_slot(False)
     door_controller.close_switch_slot(True)
+    door_controller.do_all()
     sleep_pin_mock.value.called_once_with(1)
 
 del sys.modules['machine']

@@ -153,23 +153,24 @@ class StateMachine(State):
     def send_signal(self, signal):
         self.signal_stack.append(signal)
 
-    def process_signal(self, signal):
-        ''' Handle the given signal.
+    def process_signal(self):
+        ''' Handle single signal in queue.
+        Process the oldest signal from queue.
         Go through active state machine branch, try find the state
         that accepts the given signal.
         '''
-        state = self.current_state
-        while state is not None:
-            if state.send_signal(signal):
-                return True
-            state = state.current_state
+        if self.anything_to_do():
+            signal = self.signal_stack.pop(0)
+            state = self.current_state
+            while state is not None:
+                if state.send_signal(signal):
+                    return True
+                state = state.current_state
         return False
 
-    def wakeup(self):
-        if len(self.signal_stack) > 0:
-            self.process_signal(self.signal_stack.pop(0))
-        
-            
+    def anything_to_do(self):
+        return len(self.signal_stack) > 0
+
 class Choice(State):
     def __init__(self, name, parent=None):
         super().__init__(name, parent)

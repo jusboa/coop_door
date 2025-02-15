@@ -219,16 +219,26 @@ class DoorController():
         self.drive_open_controller.register_finish_slot(
             lambda:self.state_machine.send_signal(self.finished))
 
-        self.timer = Timer(wake_up_period_ms, self._wake_up)
+        self.timer = Timer(wake_up_period_ms, self._wakeup)
 
     def _sleep(self):
         self.sleep_pin.value(1)
 
-    def _wake_up(self):
+    def _wakeup(self):
         self.light_sensor.read_light_intensity()
-        self.drive_open_controller.state_machine.wakeup()
-        self.drive_close_controller.state_machine.wakeup()
-        self.state_machine.wakeup()
+        self.drive_open_controller.state_machine.process_signal()
+        self.drive_close_controller.state_machine.process_signal()
+        self.state_machine.process_signal()
+
+    def do_all(self):
+        anything_to_do = True
+        while anything_to_do:
+            self.drive_open_controller.state_machine.process_signal()
+            self.drive_close_controller.state_machine.process_signal()
+            self.state_machine.process_signal()
+            anything_to_do = self.drive_open_controller.state_machine.anything_to_do()\
+                or self.drive_close_controller.state_machine.anything_to_do()\
+                or self.state_machine.anything_to_do()
 
     def light_slot(self, is_light):
         if (is_light):

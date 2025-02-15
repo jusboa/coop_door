@@ -23,6 +23,10 @@ def states(state_machine):
               'orange' : State('orange', state_machine)}
     return states
 
+def send_signal(state_machine, signal):
+    state_machine.send_signal(signal)
+    state_machine.process_signal()
+
 def test_state_has_name(states):
     assert states['red'].name == 'red'
     states['red'].name = 'black'
@@ -54,7 +58,7 @@ def test_state_transtion(state_machine, states):
     states['red'].on_signal(go).go_to(states['orange'])
     state_machine.set_init_state(states['red'])
     state_machine.start()
-    state_machine.send_signal(go)
+    send_signal(state_machine, go)
     assert state_machine.current_state is states['orange']
 
 def test_irrelevant_signals_are_ignored(state_machine, states):
@@ -64,7 +68,7 @@ def test_irrelevant_signals_are_ignored(state_machine, states):
     states['green'].on_signal(go).go_to(states['red'])
     state_machine.set_init_state(states['red'])
     state_machine.start()
-    state_machine.send_signal(stop)
+    send_signal(state_machine, stop)
     assert state_machine.current_state is states['red']
     
 def test_transition_action(state_machine, states):
@@ -73,7 +77,7 @@ def test_transition_action(state_machine, states):
     states['red'].on_signal(go).do(lambda x=actions:x.append('red')).go_to(states['green'])
     state_machine.set_init_state(states['red'])
     state_machine.start()
-    state_machine.send_signal(go)
+    send_signal(state_machine, go)
     assert actions == ['red']
 
 def test_entry_action(state_machine, states):
@@ -82,7 +86,7 @@ def test_entry_action(state_machine, states):
     states['red'].do_on_entry(lambda x=actions:x.append('red')).on_signal(go).go_to(states['green'])
     state_machine.set_init_state(states['red'])
     state_machine.start()
-    state_machine.send_signal(go)
+    send_signal(state_machine, go)
     assert actions == ['red']
 
 def test_init_state_entry_action_on_start(state_machine, states):
@@ -98,7 +102,7 @@ def test_exit_action(state_machine, states):
     states['red'].do_on_exit(lambda x=actions:x.append('red')).on_signal(go).go_to(states['green'])
     state_machine.set_init_state(states['red'])
     state_machine.start()
-    state_machine.send_signal(go)
+    send_signal(state_machine, go)
     assert actions == ['red']
 
 def test_current_state_of_nested_states(state_machine, states):
@@ -134,7 +138,7 @@ def test_entry_actions_of_nested_states_on_signal(state_machine, states):
     inner_state.set_init_state(inner_inner_state)
     inner_inner_state.do_on_entry(lambda x=actions:x.append('inner_inner_state'))
     state_machine.start()
-    state_machine.send_signal(go)
+    send_signal(state_machine, go)
     assert actions == ['green', 'inner_state', 'inner_inner_state']
 
 def test_exit_actions_of_nested_states(state_machine, states):
@@ -150,7 +154,7 @@ def test_exit_actions_of_nested_states(state_machine, states):
     inner_state.set_init_state(inner_inner_state)
     inner_inner_state.do_on_exit(lambda x=actions:x.append('inner_inner_state'))
     state_machine.start()
-    state_machine.send_signal(go)
+    send_signal(state_machine, go)
     assert actions == ['inner_inner_state', 'inner_state', 'red']
 
 def test_simple_state_machine(state_machine, states):
@@ -180,12 +184,12 @@ def test_simple_state_machine(state_machine, states):
     states['green'].do_on_entry(lambda x=actions:x.append('green'))
     states['orange'].do_on_entry(lambda x=actions:x.append('orange'))
     state_machine.start()
-    state_machine.send_signal(wakeup)
-    state_machine.send_signal(go)
-    state_machine.send_signal(go_delay_expired)
-    state_machine.send_signal(stop)
-    state_machine.send_signal(stop_delay_expired)
-    state_machine.send_signal(sleep)
+    send_signal(state_machine, wakeup)
+    send_signal(state_machine, go)
+    send_signal(state_machine, go_delay_expired)
+    send_signal(state_machine, stop)
+    send_signal(state_machine, stop_delay_expired)
+    send_signal(state_machine, sleep)
     assert actions == ['idle', 'active', 'red', 'orange', 'green', 'orange', 'red', 'idle']
 
 def test_direct_transition_from_child_state(state_machine, states):
@@ -201,7 +205,7 @@ def test_direct_transition_from_child_state(state_machine, states):
     child_state.do_on_exit(lambda x=actions:x.append('child_state'))
     singleton.do_on_entry(lambda x=actions:x.append('singleton'))
     state_machine.start()
-    state_machine.send_signal(go)
+    send_signal(state_machine, go)
     assert actions == ['child_state', 'super_state', 'singleton']
     assert state_machine.current_state == singleton
 
@@ -217,7 +221,7 @@ def test_direct_transition_to_child_state(state_machine, states):
     super_state.do_on_entry(lambda x=actions:x.append('super_state'))
     child_state.do_on_entry(lambda x=actions:x.append('child_state'))
     state_machine.start()
-    state_machine.send_signal(go)
+    send_signal(state_machine, go)
     assert actions == ['super_state', 'child_state']
     
 def test_time_limited_state_creates_timer(state_machine, states):
@@ -245,7 +249,7 @@ def test_timer_starts_on_entry(state_machine, states, timer_mock):
         states['orange'].on_timeout(100).go_to(states['green'])
         state_machine.set_init_state(states['red'])
         state_machine.start()
-        state_machine.send_signal(go)
+        send_signal(state_machine, go)
         timer_mock.start.assert_called_once()
 
 
@@ -258,7 +262,7 @@ def test_timer_stops_on_exit(state_machine, states, timer_mock):
         callback = Timer_mock.call_args.args[1]
         state_machine.set_init_state(states['red'])
         state_machine.start()
-        state_machine.send_signal(go)
+        send_signal(state_machine, go)
         callback()
         timer_mock.stop.assert_called_once()
 
