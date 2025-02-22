@@ -109,6 +109,10 @@ def test_hardware_wiring():
         LightSensor_mock.assert_called_once_with(2, 0)
         Pin_mock.assert_called_once_with(22, 33)
 
+def test_light_sensor_is_woken_up_on_init(door_controller,
+                                          light_sensor_mock):
+    light_sensor_mock.wakeup.assert_called_once()
+
 def test_refresh_inputs(timer_mock, light_sensor_mock, open_end_switch_mock,
                         close_end_switch_mock):
     with (patch('coop_door.coop_door.door_controller.Timer') as Timer_mock,
@@ -129,7 +133,7 @@ def test_refresh_inputs(timer_mock, light_sensor_mock, open_end_switch_mock,
         refresh_inputs()
         refresh_inputs()
         refresh_inputs()
-        assert light_sensor_mock.read_light_intensity.call_count == 3
+        assert light_sensor_mock.read.call_count == 3
 
 def test_register_light_slot(door_controller, light_sensor_mock):
     light_sensor_mock.register_light_slot.assert_called_once_with(door_controller.light_slot)

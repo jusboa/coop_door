@@ -1,4 +1,5 @@
 from machine import ADC, Pin
+from .timer import Timer
 
 class LightSensor():
     def __init__(self, adc_channel, en_pin):
@@ -7,24 +8,26 @@ class LightSensor():
         self.R_UP_OHM = 10e3
         self.R_DARK_OHM = 0.5e6
         self.R_LIGHT_OHM = 25e3
-        self.R_HYSTERESIS_OHM = 2e3
+        self.R_HYSTERESIS_OHM = 4e3
+        self.C_F = 4.7e-6
         self.ADC_MAX = 65535
         self.day_night_threshold_ohm = self.R_LIGHT_OHM
         self.light = 0
-        self.was_day = None
         self._is_day = None
         self.en_pin = Pin(en_pin, Pin.OUT)
+        self.WAKEUP_DELAY_MS = 50 * round(1000 * self.C_F * self.R_UP_OHM * 5 / 50)
+        self.wakeup_timer = Timer(self.WAKEUP_DELAY_MS, None, Timer.SINGLE_SHOT)
 
-    def read_light_intensity(self):
+    def read(self):
         """ Return the light intensity in %.
         Perform the ADC reading and return the light
         intensity in percents (0% - dark, 100% - full light).
         The function is blocking.
         """
-        self.en_pin.value(1)
+        if self.wakeup_timer.active():
+            return
         adc_sensor = self.adc.read_u16()
-        #print(f'adc={adc_sensor}')
-        self.en_pin.value(0)
+        print(f'adc={adc_sensor}')
         if (adc_sensor >= self.ADC_MAX):
             self.r_sensor = self.R_DARK_OHM
         else:
@@ -40,14 +43,17 @@ class LightSensor():
             self._is_day = False
             self.day_night_threshold_ohm = self.R_LIGHT_OHM - self.R_HYSTERESIS_OHM
 
-        #print(f'R = {self.r_sensor / 1000:.2f} kOhm')
-        #print(f'day = {self._is_day}')
-        if (self.was_day is not self._is_day):
-            self.was_day = self._is_day
-            for slot in self.slots:
-                slot(self._is_day)
+        print(f'R = {self.r_sensor / 1000:.2f} kOhm')
+        print(f'day = {self._is_day}')
+        for slot in self.slots:
+            slot(self._is_day)
 
-        return self.is_day()
+    def wakeup(self):
+        self.en_pin.value(1)
+        self.wakeup_timer.start()
+
+    def sleep(self):
+        self.en_pin.value(0)
 
     def is_day(self):
         return self._is_day

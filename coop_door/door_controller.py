@@ -135,10 +135,11 @@ class MotorControl():
         self.finish_slots.append(slot)
 
 class DoorController():
-    def __init__(self, wake_up_period_ms=20,
+    def __init__(self, wake_up_period_ms=100,
                  door_move_timeout_ms=20000):
         self.motor = Motor(14, 15, 6)
         self.light_sensor = LightSensor(2, 0)
+        self.light_sensor.wakeup()
         self.open_switch = EndSwitch(1)
         self.close_switch = EndSwitch(2)
         self.light_sensor.register_light_slot(self.light_slot)
@@ -199,7 +200,9 @@ class DoorController():
         self.dark = Signal('dark')
         self.finished = Signal('finished')
 
-        start.do_on_entry(lambda:self.timer.start())
+        self.timer = Timer(wake_up_period_ms, self._wakeup)
+
+        start.do_on_entry(self.timer.start)
         start.on_signal(self.light).go_to(day)
         day.on_signal(self.dark).go_to(night)
         open_door.on_signal(self.finished).go_to(finish_day)
@@ -219,13 +222,11 @@ class DoorController():
         self.drive_open_controller.register_finish_slot(
             lambda:self.state_machine.send_signal(self.finished))
 
-        self.timer = Timer(wake_up_period_ms, self._wakeup)
-
     def _sleep(self):
         self.sleep_pin.value(1)
 
     def _wakeup(self):
-        self.light_sensor.read_light_intensity()
+        self.light_sensor.read()
         self.drive_open_controller.state_machine.process_signal()
         self.drive_close_controller.state_machine.process_signal()
         self.state_machine.process_signal()
