@@ -3,7 +3,7 @@ from .light_sensor import LightSensor
 from .end_switch import EndSwitch
 from .state_machine import StateMachine, State, Signal, Choice
 from .timer import Timer
-from machine import Pin
+from machine import PWM, Pin
 
 class MotorControl():
     DETACH_FROM_END_TIMEOUT_MS = 2000
@@ -156,6 +156,7 @@ class DoorController():
                                                    +1,
                                                    door_move_timeout_ms)
         self.sleep_pin = Pin(22, Pin.OUT)
+        self.sleep_pin.value(0)
 
         # State Machine
         # @startuml{door_controller.png} 
@@ -223,7 +224,9 @@ class DoorController():
             lambda:self.state_machine.send_signal(self.finished))
 
     def _sleep(self):
-        self.sleep_pin.value(1)
+        # Do PWM on sleep pin for the sleep circuit not to miss it. It detects
+        # the rising edge, minimum pulse width is 100ns.
+        PWM(self.sleep_pin, freq=500, duty_u16=round(0.5*0xFFFF))
 
     def _wakeup(self):
         self.light_sensor.read()

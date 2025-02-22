@@ -52,7 +52,7 @@ def timers():
 @pytest.fixture
 def sleep_pin_mock():
     return MagicMock()
-    
+
 @pytest.fixture
 def door_controller_factory(light_sensor_mock,
                             close_end_switch_mock,
@@ -101,13 +101,14 @@ def test_hardware_wiring():
           patch('coop_door.coop_door.door_controller.LightSensor') as LightSensor_mock,
           patch('coop_door.coop_door.door_controller.EndSwitch') as EndSwitch_mock,
           patch('coop_door.coop_door.door_controller.Pin') as Pin_mock):
-        Pin_mock.OUT = 33
+        Pin_mock.OUT = 333
         DoorController()
         Motor_mock.assert_called_once_with(14, 15, 6)
         EndSwitch_mock.has_calls([call(OPEN_END_SWITCH_PIN),
                                   call(CLOSE_END_SWITCH_PIN)])
         LightSensor_mock.assert_called_once_with(2, 0)
-        Pin_mock.assert_called_once_with(22, 33)
+        # Sleep pin
+        Pin_mock.assert_called_once_with(22, 333)
 
 def test_light_sensor_is_woken_up_on_init(door_controller,
                                           light_sensor_mock):
@@ -317,22 +318,28 @@ def test_reverse_motor_limited_times_on_stuck_end(door_controller,
     motor_mock.go.assert_not_called()
     motor_mock.stop.assert_called_once()
 
+def test_sleep_pin_is_disabled_on_init(door_controller,
+                                       sleep_pin_mock):
+    sleep_pin_mock.value.assert_called_once_with(0)
+
 def test_sleep_after_door_open(door_controller,
                                open_end_switch_mock,
                                sleep_pin_mock):
-    open_end_switch_mock.read.side_effect = lambda:door_controller.open_switch_slot(False)
-    door_controller.light_slot(True)
-    door_controller.open_switch_slot(True)
-    door_controller.do_all()
-    sleep_pin_mock.value.called_once_with(1)
+    with (patch('coop_door.coop_door.door_controller.PWM') as PWM_mock):
+        open_end_switch_mock.read.side_effect = lambda:door_controller.open_switch_slot(False)
+        door_controller.light_slot(True)
+        door_controller.open_switch_slot(True)
+        door_controller.do_all()
+        PWM_mock.assert_called_once_with(sleep_pin_mock, freq=500, duty_u16=round(0.5*0xFFFF))
 
 def test_sleep_after_door_close(door_controller,
                                 close_end_switch_mock,
                                 sleep_pin_mock):
-    close_end_switch_mock.read.side_effect = lambda:door_controller.close_switch_slot(False)
-    door_controller.light_slot(False)
-    door_controller.close_switch_slot(True)
-    door_controller.do_all()
-    sleep_pin_mock.value.called_once_with(1)
+    with (patch('coop_door.coop_door.door_controller.PWM') as PWM_mock):
+        close_end_switch_mock.read.side_effect = lambda:door_controller.close_switch_slot(False)
+        door_controller.light_slot(False)
+        door_controller.close_switch_slot(True)
+        door_controller.do_all()
+        PWM_mock.assert_called_once_with(sleep_pin_mock, freq=500, duty_u16=round(0.5*0xFFFF))
 
 del sys.modules['machine']
