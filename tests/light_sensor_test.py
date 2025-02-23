@@ -5,7 +5,6 @@ from unittest.mock import patch, call
 import sys
 sys.modules['machine'] = MagicMock()
 from ..coop_door.light_sensor import LightSensor
-import math
 
 R_UP_OHM = 10e3
 R_DAY_OHM = 25e3
@@ -31,8 +30,6 @@ def observer_mock():
 def timer_mock():
     return MagicMock()
 
-startup_timer_callback = None
-
 @pytest.fixture
 def light_sensor(adc_mock, pin_mock, timer_mock):
     with (patch('coop_door.coop_door.light_sensor.ADC') as ADC_mock,
@@ -41,11 +38,8 @@ def light_sensor(adc_mock, pin_mock, timer_mock):
         ADC_mock.return_value = adc_mock
         Pin_mock.return_value = pin_mock
         Timer_mock.return_value = timer_mock
-        global startup_timer_callback
-        sensor = LightSensor(0, 5)
-        startup_timer_callback = Timer_mock.call_args.args[1]
         timer_mock.active.return_value = False
-        return sensor
+        return LightSensor(0, 5)
 
 def test_enable_pin_config():
     with patch('coop_door.coop_door.light_sensor.Pin') as Pin_mock:
@@ -113,15 +107,13 @@ def test_call_light_slot_on_complete_reading(light_sensor,
     observer_mock.assert_called_once()
 
 def test_zero_adc_is_full_light(light_sensor,
-                                adc_mock,
-                                timer_mock):
+                                adc_mock):
     adc_mock.read_u16.return_value = 0
     light_sensor.read()
     assert light_sensor.is_day()
 
 def test_full_adc_is_complete_dark(light_sensor,
-                                   adc_mock,
-                                   timer_mock):
+                                   adc_mock):
     adc_mock.read_u16.return_value = ADC_MAX
     light_sensor.read()
     assert not light_sensor.is_day()
