@@ -1,10 +1,11 @@
-from machine import ADC
+from machine import ADC, Pin
 from .timer import Timer
 
 class BatteryVoltageSensor():
-    def __init__(self, adc_channel):
+    def __init__(self, pin_num):
         self.slots = []
-        self.adc = ADC(adc_channel)
+        pin = Pin(pin_num)
+        self.adc = ADC(pin)
         self.R_UP_OHM = 15e3
         self.R_DOWN_OHM = 10e3
         # Only to filter hight frequency noise, there is a already huge cap on battery
@@ -25,7 +26,7 @@ class BatteryVoltageSensor():
         if self.init_timer.active():
             return None
         adc = self.adc.read_u16()
-        print(f'adc={adc}')
+        #print(f'adc={adc}')
         v = ((self.R_UP_OHM + self.R_DOWN_OHM) * adc * self.VCC_V) / (self.R_DOWN_OHM * self.ADC_MAX)
 
         for slot in self.slots:

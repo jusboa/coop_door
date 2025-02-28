@@ -3,6 +3,7 @@ from .light_sensor import LightSensor
 from .end_switch import EndSwitch
 from .state_machine import StateMachine, State, Signal, Choice
 from .timer import Timer
+from .battery_voltage_sensor import BatteryVoltageSensor
 from machine import PWM, Pin
 
 class MotorControl():
@@ -137,8 +138,8 @@ class MotorControl():
 class DoorController():
     def __init__(self, wake_up_period_ms=100,
                  door_move_timeout_ms=20000):
-        self.motor = Motor(14, 15, 6)
-        self.light_sensor = LightSensor(2, 0)
+        self.motor = Motor(14, 15, 6, self.motor_voltage)
+        self.light_sensor = LightSensor(28, 0)
         self.light_sensor.wakeup()
         self.open_switch = EndSwitch(1)
         self.close_switch = EndSwitch(2)
@@ -157,6 +158,9 @@ class DoorController():
                                                    door_move_timeout_ms)
         self.sleep_pin = Pin(22, Pin.OUT)
         self.sleep_pin.value(0)
+        self.voltage_sensor = BatteryVoltageSensor(26)
+        self.voltage_sensor.register_slot(self.battery_voltage_slot)
+        self.battery_voltage_v = None
 
         # State Machine
         # @startuml{door_controller.png} 
@@ -226,10 +230,11 @@ class DoorController():
     def _sleep(self):
         # Do PWM on sleep pin for the sleep circuit not to miss it. It detects
         # the rising edge, minimum pulse width is 100ns.
-        PWM(self.sleep_pin, freq=500, duty_u16=round(0.5*0xFFFF))
+        PWM(self.sleep_pin, freq=100, duty_u16=round(0.5*0xFFFF))
 
     def _wakeup(self):
         self.light_sensor.read()
+        self.voltage_sensor.read()
         self.drive_open_controller.state_machine.process_signal()
         self.drive_close_controller.state_machine.process_signal()
         self.state_machine.process_signal()
@@ -259,6 +264,13 @@ class DoorController():
         #print(f'close switch = {is_on}')
         self.drive_open_controller.start_switch_slot(is_on)
         self.drive_close_controller.stop_switch_slot(is_on)
+
+    def battery_voltage_slot(self, voltage_v):
+        self.battery_voltage_v = voltage_v
+        #print(f'battery voltage = {voltage_v:.3f} V')
+
+    def motor_voltage(self):
+        return self.battery_voltage_v
 
     def start(self):
         self.state_machine.start()

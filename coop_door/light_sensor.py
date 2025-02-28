@@ -2,9 +2,10 @@ from machine import ADC, Pin
 from .timer import Timer
 
 class LightSensor():
-    def __init__(self, adc_channel, en_pin):
+    def __init__(self, adc_pin_num, en_pin):
         self.slots = []
-        self.adc = ADC(adc_channel);
+        adc_pin = Pin(adc_pin_num)
+        self.adc = ADC(adc_pin);
         self.R_UP_OHM = 10e3
         self.R_DARK_OHM = 0.5e6
         self.R_LIGHT_OHM = 25e3
@@ -27,7 +28,7 @@ class LightSensor():
         if self.wakeup_timer.active():
             return
         adc_sensor = self.adc.read_u16()
-        print(f'adc={adc_sensor}')
+        #print(f'adc={adc_sensor}')
         if (adc_sensor >= self.ADC_MAX):
             self.r_sensor = self.R_DARK_OHM
         else:
@@ -43,8 +44,8 @@ class LightSensor():
             self._is_day = False
             self.day_night_threshold_ohm = self.R_LIGHT_OHM - self.R_HYSTERESIS_OHM
 
-        print(f'R = {self.r_sensor / 1000:.2f} kOhm')
-        print(f'day = {self._is_day}')
+        #print(f'R = {self.r_sensor / 1000:.2f} kOhm')
+        #print(f'day = {self._is_day}')
         for slot in self.slots:
             slot(self._is_day)
 

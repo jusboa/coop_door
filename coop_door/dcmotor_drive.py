@@ -1,54 +1,65 @@
-from machine import Pin
+from machine import Pin, PWM
 
 class Motor():
-    def __init__(self, gpio0, gpio1, gpio_en):
-        self.pin0_value = 0
-        self.pin1_value = 0
-        self.drive_pin0 = Pin(gpio0, Pin.OUT)
-        self.drive_pin1 = Pin(gpio1, Pin.OUT)
+    VOLTAGE_NOMINAL_V = 6
+    VOLTAGE_MIN_V = 4
+    VOLTAGE_MAX_V = 12
+    FREQ_HZ = 16000
+    DUTY_MAX = 65535
+    def __init__(self,
+                 gpio0, gpio1,
+                 gpio_en,
+                 voltage_callback):
+        self.drive_value = [False, False]
+        self._direction = 0
+        pin0 = Pin(gpio0, Pin.OUT)
+        pin1 = Pin(gpio1, Pin.OUT)
         self.enable_pin = Pin(gpio_en, Pin.OUT)
+        self.drive = [PWM(pin0), PWM(pin1)]
+        self.voltage_callback = voltage_callback
+        self.duty = 0
 
     def _drive(self):
-        self.enable_pin.value(1)
-        self.drive_pin0.value(self.pin0_value)
-        self.drive_pin1.value(self.pin1_value)
-        #print(f'pin0 value = {self.pin0_value}')
-        #print(f'pin1 value = {self.pin1_value}')
+        print(f'duty = {self.duty}')
+        self.enable_pin.value(self._direction != 0)
+        if self._direction > 0:
+            self.drive[0].init(freq=Motor.FREQ_HZ,
+                               duty_u16=self.duty)
+            self.drive[1].init(freq=Motor.FREQ_HZ, duty_u16=0)
+        elif self._direction < 0:
+            self.drive[0].init(freq=Motor.FREQ_HZ, duty_u16=0)
+            self.drive[1].init(freq=Motor.FREQ_HZ,
+                               duty_u16=self.duty)
+        else:
+            self.drive[0].init(freq=Motor.FREQ_HZ, duty_u16=0)
+            self.drive[1].init(freq=Motor.FREQ_HZ, duty_u16=0)
+
+    def is_voltage_ok(self, v):
+        return v is not None and v >= Motor.VOLTAGE_MIN_V \
+           and v <= Motor.VOLTAGE_MAX_V
+
+    def v_to_duty(self, volts):
+        duty = round(Motor.DUTY_MAX * Motor.VOLTAGE_NOMINAL_V / volts)
+        if duty > Motor.DUTY_MAX:
+            duty = Motor.DUTY_MAX
+        return duty
 
     def go(self, direction):
-        if direction > 0:
-            self.pin0_value = 1
-            self.pin1_value = 0
-        elif direction < 0:
-            self.pin0_value = 0
-            self.pin1_value = 1
-        else:
-            # == 0
+        self._direction = direction
+        v = self.voltage_callback()
+        print(f'v = {v} V')
+        if not self.is_voltage_ok(v):
             self.stop()
-        self._drive()
-
-    def backward(self):
-        self.pin0_value = 0
-        self.pin1_value = 1
+            return
+        self.duty = self.v_to_duty(v)
         self._drive()
 
     def stop(self):
-        self.pin0_value = 0
-        self.pin1_value = 0
-        self.drive_pin0.value(self.pin0_value)
-        self.drive_pin1.value(self.pin1_value)
-        self.enable_pin.value(0)
+        self._direction = 0
+        self._drive()
 
     def direction(self):
-        if (self.pin0_value == 1
-            and self.pin1_value == 0):
-            return 1
-        elif (self.pin0_value == 0
-              and self.pin1_value == 1):
-            return -1
-        elif (not self.is_running()):
-            return 0
+        return self._direction
 
     def is_running(self):
-        return (self.pin0_value
-                != self.pin1_value)
+        return self._direction != 0

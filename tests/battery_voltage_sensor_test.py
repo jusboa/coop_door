@@ -24,6 +24,10 @@ def adc_mock():
     return MagicMock()
 
 @pytest.fixture
+def pin_mock():
+    return MagicMock()
+
+@pytest.fixture
 def observer_mock():
     return MagicMock()
 
@@ -32,7 +36,8 @@ def timer_mock():
     return MagicMock()
 
 @pytest.fixture
-def sensor(adc_mock, timer_mock):
+def sensor(adc_mock,
+           timer_mock):
     with (patch('coop_door.coop_door.battery_voltage_sensor.ADC') as ADC_mock,
           patch('coop_door.coop_door.battery_voltage_sensor.Timer') as Timer_mock):
         ADC_mock.return_value = adc_mock
@@ -40,10 +45,13 @@ def sensor(adc_mock, timer_mock):
         timer_mock.active.return_value = False
         return BatteryVoltageSensor(0)
 
-def test_adc_channel_config():
-    with patch('coop_door.coop_door.battery_voltage_sensor.ADC') as ADC_mock:
+def test_adc_channel_config(pin_mock):
+    with (patch('coop_door.coop_door.battery_voltage_sensor.ADC') as ADC_mock,
+          patch('coop_door.coop_door.battery_voltage_sensor.Pin') as Pin_mock):
+        Pin_mock.return_value = pin_mock
         BatteryVoltageSensor(777)
-        ADC_mock.assert_called_once_with(777)
+        Pin_mock.assert_called_once_with(777)
+        ADC_mock.assert_called_once_with(pin_mock)
 
 def test_gives_none_during_init_delay(sensor,
                                       adc_mock,

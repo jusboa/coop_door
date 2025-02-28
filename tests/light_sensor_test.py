@@ -45,12 +45,15 @@ def test_enable_pin_config():
     with patch('coop_door.coop_door.light_sensor.Pin') as Pin_mock:
         Pin_mock.OUT = 77
         LightSensor(0, 4)
-        Pin_mock.assert_called_once_with(4, 77)
+        Pin_mock.assert_any_call(4, 77)
 
-def test_adc_channel_config():
-    with patch('coop_door.coop_door.light_sensor.ADC') as Adc_mock:
+def test_adc_channel_config(pin_mock):
+    with (patch('coop_door.coop_door.light_sensor.ADC') as Adc_mock,
+          patch('coop_door.coop_door.light_sensor.Pin') as Pin_mock):
+        Pin_mock.return_value = pin_mock
         LightSensor(111, 0)
-        Adc_mock.assert_called_once_with(111)
+        Pin_mock.assert_any_call(111)
+        Adc_mock.assert_called_once_with(pin_mock)
 
 def test_sensor_is_enabled_on_wakeup(light_sensor,
                                      pin_mock):
