@@ -8,7 +8,7 @@ class LightSensor():
         self.adc = ADC(adc_pin);
         self.R_UP_OHM = 10e3
         self.R_DARK_OHM = 0.5e6
-        self.R_LIGHT_OHM = 25e3
+        self.R_LIGHT_OHM = 70e3
         self.R_HYSTERESIS_OHM = 4e3
         self.C_F = 4.7e-6
         self.ADC_MAX = 65535

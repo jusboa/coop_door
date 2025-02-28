@@ -7,7 +7,7 @@ sys.modules['machine'] = MagicMock()
 from ..coop_door.light_sensor import LightSensor
 
 R_UP_OHM = 10e3
-R_DAY_OHM = 25e3
+R_DAY_OHM = 70e3
 ADC_MAX = 65535 # 15 bits
 R_HYSTERESIS_OHM = 4e3
 
