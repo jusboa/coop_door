@@ -8,9 +8,9 @@ from ..coop_door.battery_voltage_sensor import BatteryVoltageSensor
 import math
 
 R_UP_OHM = 15e3
-R_DOWN_OHM = 10e3
+R_DOWN_OHM = 5e3
 ADC_MAX = 65535 # 15 bits
-VCC_V = 3.3
+VCC_V = 3.2
 V_DIFF = 1e-6
 
 def v_to_adc(v):

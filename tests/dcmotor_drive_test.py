@@ -21,7 +21,7 @@ def voltage_callback():
 
 @pytest.fixture
 def freq_hz():
-    return 16000
+    return 10000
 
 def voltage_to_duty(v):
     return round(65535 * 6 / v)

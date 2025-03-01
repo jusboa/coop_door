@@ -137,7 +137,7 @@ class MotorControl():
 
 class DoorController():
     def __init__(self, wake_up_period_ms=100,
-                 door_move_timeout_ms=20000):
+                 door_move_timeout_ms=30000):
         self.motor = Motor(14, 15, 6, self.motor_voltage)
         self.light_sensor = LightSensor(28, 0)
         self.light_sensor.wakeup()

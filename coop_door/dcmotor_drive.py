@@ -4,7 +4,7 @@ class Motor():
     VOLTAGE_NOMINAL_V = 6
     VOLTAGE_MIN_V = 4
     VOLTAGE_MAX_V = 12
-    FREQ_HZ = 16000
+    FREQ_HZ = 10000
     DUTY_MAX = 65535
     def __init__(self,
                  gpio0, gpio1,
@@ -20,7 +20,6 @@ class Motor():
         self.duty = 0
 
     def _drive(self):
-        print(f'duty = {self.duty}')
         self.enable_pin.value(self._direction != 0)
         if self._direction > 0:
             self.drive[0].init(freq=Motor.FREQ_HZ,
@@ -52,6 +51,7 @@ class Motor():
             self.stop()
             return
         self.duty = self.v_to_duty(v)
+        print(f'duty = {self.duty}')
         self._drive()
 
     def stop(self):
