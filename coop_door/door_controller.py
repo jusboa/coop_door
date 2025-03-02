@@ -4,14 +4,14 @@ from .end_switch import EndSwitch
 from .state_machine import StateMachine, State, Signal, Choice
 from .timer import Timer
 from .battery_voltage_sensor import BatteryVoltageSensor
-from machine import PWM, Pin
+from machine import PWM, Pin, lightsleep
 
 class MotorControl():
     DETACH_FROM_END_TIMEOUT_MS = 2000
     DETACH_TRIAL_MAX = 4
     def __init__(self, start_switch,
                  stop_switch, motor,
-                 direction, drive_timeout_ms=20000):
+                 direction, drive_timeout_ms):
         self.start_switch = start_switch
         self.stop_switch = stop_switch
         self.motor = motor
@@ -19,6 +19,7 @@ class MotorControl():
         self.direction = direction
         self.detach_trials = 0
         self.finish_slots = []
+        self.drive_timeout_ms = drive_timeout_ms
 
         # @startuml{motor_control.png}
         # [*] --> idle
@@ -40,11 +41,11 @@ class MotorControl():
         #      is_max_trials --> end : [trials > max] : report error
         #      wait_start_sw_off : entry : motor.go(dir)
         #      wait_start_sw_off --> go : start sw off
-        #      go : entry : motor.go(dir)
+        #      go : entry : motor.go(dir), lightsleep(drive_timeout_ms)
         #      drive_to_end : entry : trials = 0
+        #      go --> end : timeout : report error
         #   }
         #   drive_to_end --> end : stop sw on
-        #   drive_to_end --> end : timeout : report error
         #   end : entry : motor.stop(), report finished
         # }
         # @enduml
@@ -86,8 +87,8 @@ class MotorControl():
         is_trials_max.go_to_if(end, lambda:self.detach_trials > MotorControl.DETACH_TRIAL_MAX)\
             .do(lambda:[self._reset_direction(), print('Maximum end-detach trials reached.')])
         wait_start_sw_off.on_signal(self.start_switch_off).go_to(go)
-        go.do_on_entry(lambda:self.motor.go(self.direction))
-        drive_to_end.on_timeout(drive_timeout_ms).do(lambda:print('Failed to close/open the door in time.')).go_to(end)
+        go.do_on_entry(self._go_entry)
+        go.on_timeout(self.drive_timeout_ms).do(lambda:print('Failed to close/open the door in time.')).go_to(end)
         
         self.state_machine.start()
 
@@ -95,6 +96,9 @@ class MotorControl():
         print("stopping motor")
         self.motor.stop()
         self._report_finished()
+
+    def _go_entry(self):
+        self.motor.go(self.direction)
 
     def _report_finished(self):
         for slot in self.finish_slots:

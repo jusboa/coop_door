@@ -65,6 +65,10 @@ def voltage_sensor_mock():
 def refresh_inputs_period_ms():
     return 123
 
+@pytest.fixture
+def motor_drive_timeout_ms():
+    return 32555
+
 refresh_inputs_callback = None
 
 @pytest.fixture
@@ -77,7 +81,8 @@ def door_controller_factory(light_sensor_mock,
                             sleep_pin_mock,
                             voltage_sensor_mock,
                             refresh_inputs_period_ms,
-                            timer_mock):
+                            timer_mock,
+                            motor_drive_timeout_ms):
     def make_door_controller():
         with (patch('coop_door.coop_door.door_controller.Motor') as Motor_mock,
               patch('coop_door.coop_door.door_controller.LightSensor') as LightSensor_mock,
@@ -98,7 +103,8 @@ def door_controller_factory(light_sensor_mock,
                 return_value.append(timer_mock_factory())
                 return return_value[-1]
             StateTimer_mock.side_effect = side_effect
-            controller = DoorController(refresh_inputs_period_ms)
+            controller = DoorController(refresh_inputs_period_ms,
+                                        motor_drive_timeout_ms)
             timers.extend([
                 ( return_value[i],
                   StateTimer_mock.call_args_list[i].args[0],
@@ -167,8 +173,10 @@ def test_voltage_sensor_slot(door_controller, voltage_sensor_mock):
     
 def test_day_on_power_up_open_door(door_controller_factory,
                                    open_end_switch_mock,
+                                   close_end_switch_mock,
                                    motor_mock):
     open_end_switch_mock.is_on.return_value = False
+    close_end_switch_mock.is_on.return_value = False
     controller = door_controller_factory()
     controller.start()
     controller.light_slot(True)
@@ -185,8 +193,10 @@ def test_day_comes_door_opened_motor_stays_still(door_controller,
 
 def test_night_on_power_up_close_door(door_controller_factory,
                                       close_end_switch_mock,
+                                      open_end_switch_mock,
                                       motor_mock):
     close_end_switch_mock.is_on.return_value = False
+    open_end_switch_mock.is_on.return_value = False
     controller = door_controller_factory()
     controller.start()
     controller.light_slot(False)
@@ -221,18 +231,26 @@ def test_motor_stops_when_close_end_switch_hit(door_controller,
 
 def test_night_comes_close_door(door_controller,
                                 close_end_switch_mock,
+                                open_end_switch_mock,
                                 motor_mock):
+    open_end_switch_mock.is_on.return_value = True
     door_controller.light_slot(True)
+    door_controller.do_all()
     close_end_switch_mock.is_on.return_value = False
+    open_end_switch_mock.is_on.return_value = False
     door_controller.light_slot(False)
     door_controller.do_all()
     motor_mock.go.assert_called_once_with(+1)
 
 def test_day_comes_open_door(door_controller,
                              open_end_switch_mock,
+                             close_end_switch_mock,
                              motor_mock):
+    close_end_switch_mock.is_on.return_value = True
     door_controller.light_slot(False)
+    door_controller.do_all()
     open_end_switch_mock.is_on.return_value = False
+    close_end_switch_mock.is_on.return_value = False
     door_controller.light_slot(True)
     door_controller.do_all()
     motor_mock.go.assert_called_once_with(-1)
