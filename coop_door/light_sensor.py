@@ -1,5 +1,8 @@
 from machine import ADC, Pin
 from .timer import Timer
+import logging
+
+logger = logging.getLogger(__name__)
 
 class LightSensor():
     def __init__(self, adc_pin_num, en_pin):
@@ -28,7 +31,7 @@ class LightSensor():
         if self.wakeup_timer.active():
             return
         adc_sensor = self.adc.read_u16()
-        #print(f'adc={adc_sensor}')
+        logger.debug(f'adc={adc_sensor}')
         if (adc_sensor >= self.ADC_MAX):
             self.r_sensor = self.R_DARK_OHM
         else:
@@ -44,8 +47,8 @@ class LightSensor():
             self._is_day = False
             self.day_night_threshold_ohm = self.R_LIGHT_OHM - self.R_HYSTERESIS_OHM
 
-        #print(f'R = {self.r_sensor / 1000:.2f} kOhm')
-        #print(f'day = {self._is_day}')
+        logger.debug(f'R = {self.r_sensor / 1000:.2f} kOhm')
+        logger.debug(f'day = {self._is_day}')
         for slot in self.slots:
             slot(self._is_day)
 

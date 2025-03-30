@@ -5,6 +5,9 @@ from .state_machine import StateMachine, State, Signal, Choice
 from .timer import Timer
 from .battery_voltage_sensor import BatteryVoltageSensor
 from machine import PWM, Pin, lightsleep
+import logging
+
+logger = logging.getLogger(__name__)
 
 class MotorControl():
     DETACH_FROM_END_TIMEOUT_MS = 2000
@@ -85,15 +88,15 @@ class MotorControl():
             .go_to(is_trials_max).do(lambda:[self._inc_detach_trials(), self._reverse_direction()])
         is_trials_max.go_to_if(wait_start_sw_off, lambda:self.detach_trials <= MotorControl.DETACH_TRIAL_MAX)
         is_trials_max.go_to_if(end, lambda:self.detach_trials > MotorControl.DETACH_TRIAL_MAX)\
-            .do(lambda:[self._reset_direction(), print('Maximum end-detach trials reached.')])
+            .do(lambda:[self._reset_direction(), logger.debug('Maximum end-detach trials reached.')])
         wait_start_sw_off.on_signal(self.start_switch_off).go_to(go)
         go.do_on_entry(self._go_entry)
-        go.on_timeout(self.drive_timeout_ms).do(lambda:print('Failed to close/open the door in time.')).go_to(end)
+        go.on_timeout(self.drive_timeout_ms).do(lambda:logger.debug('Failed to close/open the door in time.')).go_to(end)
         
         self.state_machine.start()
 
     def _end_entry(self):
-        print("stopping motor")
+        logger.debug('stopping motor')
         self.motor.stop()
         self._report_finished()
 
@@ -129,11 +132,11 @@ class MotorControl():
             self.state_machine.send_signal(self.stop_switch_off)
 
     def start(self):
-        print("start")
+        logger.debug('start')
         self.state_machine.send_signal(self.start_request)
 
     def stop(self):
-        print("stop")
+        logger.debug('stop')
         self.state_machine.send_signal(self.stop_request)
 
     def register_finish_slot(self, slot):
@@ -260,18 +263,18 @@ class DoorController():
             self.state_machine.send_signal(self.dark)
 
     def open_switch_slot(self, is_on):
-        #print(f'open switch = {is_on}')
+        logger.debug(f'open switch = {is_on}')
         self.drive_open_controller.stop_switch_slot(is_on)
         self.drive_close_controller.start_switch_slot(is_on)
 
     def close_switch_slot(self, is_on):
-        #print(f'close switch = {is_on}')
+        logger.debug(f'close switch = {is_on}')
         self.drive_open_controller.start_switch_slot(is_on)
         self.drive_close_controller.stop_switch_slot(is_on)
 
     def battery_voltage_slot(self, voltage_v):
         self.battery_voltage_v = voltage_v
-        #print(f'battery voltage = {voltage_v:.3f} V')
+        logger.debug(f'battery voltage = {voltage_v:.3f} V')
 
     def motor_voltage(self):
         return self.battery_voltage_v

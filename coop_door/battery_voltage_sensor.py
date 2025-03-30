@@ -1,5 +1,8 @@
 from machine import ADC, Pin
 from .timer import Timer
+import logging
+
+logger = logging.getLogger(__name__)
 
 class BatteryVoltageSensor():
     def __init__(self, pin_num):
@@ -26,7 +29,7 @@ class BatteryVoltageSensor():
         if self.init_timer.active():
             return None
         adc = self.adc.read_u16()
-        #print(f'adc={adc}')
+        logger.debug(f'adc={adc}')
         v = ((self.R_UP_OHM + self.R_DOWN_OHM) * adc * self.VCC_V) / (self.R_DOWN_OHM * self.ADC_MAX)
 
         for slot in self.slots:

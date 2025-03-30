@@ -1,5 +1,8 @@
 import machine
 from machine import Pin
+import logging
+
+logger = logging.getLogger(__name__)
 
 class EndSwitch:
     def __init__(self, pin_number):
@@ -14,7 +17,7 @@ class EndSwitch:
     def read(self):
         for slot in self.slots:
             if (self.is_on() is not self.last_state):
-                #print(f'end switch@{self.pin} = {self.is_on()}')
+                logger.debug(f'end switch@{self.pin} = {self.is_on()}')
                 slot(self.is_on())
         self.last_state = self.is_on()
 

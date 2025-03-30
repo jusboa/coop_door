@@ -1,4 +1,7 @@
 from machine import Pin, PWM
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Motor():
     VOLTAGE_NOMINAL_V = 6
@@ -46,12 +49,12 @@ class Motor():
     def go(self, direction):
         self._direction = direction
         v = self.voltage_callback()
-        print(f'v = {v} V')
+        logger.debug(f'v = {v} V')
         if not self.is_voltage_ok(v):
             self.stop()
             return
         self.duty = self.v_to_duty(v)
-        print(f'duty = {self.duty}')
+        logger.debug(f'duty = {self.duty}')
         self._drive()
 
     def stop(self):

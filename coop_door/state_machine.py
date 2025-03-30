@@ -1,5 +1,7 @@
-#import logging
+import logging
 from .timer import Timer
+
+logger = logging.getLogger(__name__)
 
 def _find_common_parent(state1, state2):
     ''' Find a common parent of two state.
@@ -57,19 +59,19 @@ class State():
         return self
 
     def enter(self):
-        print(f'entering {self.name}')
+        logger.debug(f'entering {self.name}')
         if self.timer:
-            #print(f'starting the {self.name} state timer')
+            logger.debug(f'starting the {self.name} state timer')
             self.timer.start()
         if self.parent:
             self.parent.current_state = self
         if self.entry_action:
-            #logging.debug(f'entry action of {self.name}')
-            #print(f'entry action of {self.name}')
+            logging.debug(f'entry action of {self.name}')
+            logger.debug(f'entry action of {self.name}')
             self.entry_action()
 
     def start(self):
-        #print(f'entering {self.name}')
+        logger.debug(f'entering {self.name}')
         self.enter()
         if self.init_state:
             self.init_state.start()
@@ -78,13 +80,13 @@ class State():
         if self.current_state:
             self.current_state.exit()
         if self.timer:
-            #print(f'stopping the {self.name} state timer')
+            logger.debug(f'stopping the {self.name} state timer')
             self.timer.stop()
         if self.exit_action:
-            #logging.debug(f'exit action of {self.name}')
+            logging.debug(f'exit action of {self.name}')
             self.exit_action()
         self.current_state = None
-        #print(f'leaving {self.name}')
+        logger.debug(f'leaving {self.name}')
 
     def set_init_state(self, init_state):
         assert init_state.parent is self
@@ -105,7 +107,7 @@ class State():
         its parents if they are not in active branch.
         '''
         if signal in self.transitions.keys():
-            print(f'signal {signal.name} in state {self.name}')
+            logger.debug(f'signal {signal.name} in state {self.name}')
             target = self.transitions[signal].target
             # Transition condition
             if self.transitions[signal].condition is not None\
