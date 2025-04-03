@@ -197,7 +197,7 @@ class DoorController():
         # PLL_SYS_PWD_PD = 0x1
         # # Power down PLL
         # mem32[PLL_SYS_PWR] = PLL_SYS_PWD_PD
-        freq(20000000)
+        freq(18000000)
 
         # State Machine
         # @startuml{door_controller.png} 
