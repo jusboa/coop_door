@@ -169,35 +169,7 @@ class DoorController():
         self.voltage_sensor.register_slot(self.battery_voltage_slot)
         self.battery_voltage_v = None
 
-        #Set ROSC freq to the lowest possible value
-        # ROSC_BASE = 0x40060000
-        # ROSC_CTRL = ROSC_BASE
-        # ROSC_FREQA = ROSC_BASE + 0x04
-        # ROSC_FREQB = ROSC_BASE + 0x08
-        # ROSC_DIV = ROSC_BASE + 0x10
-        # ROSC_ENABLE = 0xfab
-        # ROSC_FREQ_RANGE_LOW = 0xfa4
-        # mem32[ROSC_CTRL] = (ROSC_ENABLE << 12 | ROSC_FREQ_RANGE_LOW)
-        # ROSC_FREQX_PASSWORD = 0x9696
-        # # All to 0 -> default drive strength -> lowest frequency
-        # mem32[ROSC_FREQA] = (ROSC_FREQX_PASSWORD << 16)
-        # mem32[ROSC_FREQB] = (ROSC_FREQX_PASSWORD << 16)
-        # ROSC_DIV_PASSWORD = 0xaa0
-        # # div bit = 0 -> divide freq by 32
-        # mem32[ROSC_DIV] = ROSC_DIV_PASSWORD
-        # # Set system clock source to ROSC
-        # CLOCKS_BASE = 0x40008000
-        # CLK_SYS_CTRL = CLOCKS_BASE + 0x3c
-        # CLKSRC_CLK_SYS_AUX = 0x01
-        # ROSC_CLKSRC = 0x2
-        # mem32[CLK_SYS_CTRL] = (ROSC_CLKSRC << 5 | CLKSRC_CLK_SYS_AUX)
-        # Turn of PLL
-        # PLL_SYS_BASE = 0x40028000
-        # PLL_SYS_PWD = PLL_SYS_BASE + 0x4
-        # PLL_SYS_PWD_PD = 0x1
-        # # Power down PLL
-        # mem32[PLL_SYS_PWR] = PLL_SYS_PWD_PD
-        freq(18000000)
+        freq(30000000)
 
         # State Machine
         # @startuml{door_controller.png} 
