@@ -8,5 +8,5 @@ logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
     c = DoorController()
-    logger.debug('----------- Starting the application -----------')
+    logger.info('----------- Starting the application -----------')
     c.start()
