@@ -169,7 +169,7 @@ class DoorController():
         self.voltage_sensor.register_slot(self.battery_voltage_slot)
         self.battery_voltage_v = None
 
-        freq(30000000)
+        freq(18000000)
 
         # State Machine
         # @startuml{door_controller.png} 
@@ -216,7 +216,7 @@ class DoorController():
 
         self.timer = Timer(wake_up_period_ms, self._wakeup)
 
-        start.do_on_entry(self.timer.start)
+        start.do_on_entry(lambda:( self.timer.start(), logger.info('Starting door controller')))
         start.on_signal(self.light).go_to(day)
         day.on_signal(self.dark).go_to(night)
         open_door.on_signal(self.finished).go_to(finish_day)
