@@ -129,7 +129,7 @@ def test_hardware_wiring():
           patch('coop_door.coop_door.door_controller.BatteryVoltageSensor') as VoltageSensor_mock):
         Pin_mock.OUT = 333
         d = DoorController()
-        Motor_mock.assert_called_once_with(14, 15, 6, d.motor_voltage)
+        Motor_mock.assert_called_once_with(14, 15, 9, d.motor_voltage)
         EndSwitch_mock.has_calls([call(OPEN_END_SWITCH_PIN),
                                   call(CLOSE_END_SWITCH_PIN)])
         LightSensor_mock.assert_called_once_with(28, 0)

@@ -145,7 +145,7 @@ class MotorControl():
 class DoorController():
     def __init__(self, wake_up_period_ms=100,
                  door_move_timeout_ms=30000):
-        self.motor = Motor(14, 15, 6, self.motor_voltage)
+        self.motor = Motor(14, 15, 9, self.motor_voltage)
         self.light_sensor = LightSensor(28, 0)
         self.light_sensor.wakeup()
         self.open_switch = EndSwitch(1)
@@ -169,7 +169,7 @@ class DoorController():
         self.voltage_sensor.register_slot(self.battery_voltage_slot)
         self.battery_voltage_v = None
 
-        freq(18000000)
+        freq(48000000)
 
         # State Machine
         # @startuml{door_controller.png} 
