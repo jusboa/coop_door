@@ -66,7 +66,7 @@ class State():
         if self.parent:
             self.parent.current_state = self
         if self.entry_action:
-            logging.debug(f'entry action of {self.name}')
+            logger.debug(f'entry action of {self.name}')
             logger.debug(f'entry action of {self.name}')
             self.entry_action()
 
@@ -83,7 +83,7 @@ class State():
             logger.debug(f'stopping the {self.name} state timer')
             self.timer.stop()
         if self.exit_action:
-            logging.debug(f'exit action of {self.name}')
+            logger.debug(f'exit action of {self.name}')
             self.exit_action()
         self.current_state = None
         logger.debug(f'leaving {self.name}')

@@ -14,7 +14,7 @@ file_handler.setFormatter(formatter)
 file_handler.setLevel(logging.INFO)
 root_logger.addHandler(file_handler)
 
-root_logger.setLevel(logging.INFO)
+root_logger.setLevel(logging.DEBUG)
 
 logger = logging.getLogger(__name__)
 if __name__ == '__main__':

@@ -4,7 +4,7 @@ from .end_switch import EndSwitch
 from .state_machine import StateMachine, State, Signal, Choice
 from .timer import Timer
 from .battery_voltage_sensor import BatteryVoltageSensor
-from machine import PWM, Pin, lightsleep, mem32, freq
+from machine import PWM, Pin, mem32, freq
 import logging
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ class MotorControl():
         #      is_max_trials --> end : [trials > max] : report error
         #      wait_start_sw_off : entry : motor.go(dir)
         #      wait_start_sw_off --> go : start sw off
-        #      go : entry : motor.go(dir), lightsleep(drive_timeout_ms)
+        #      go : entry : motor.go(dir)
         #      drive_to_end : entry : trials = 0
         #      go --> end : timeout : report error
         #   }
@@ -90,7 +90,7 @@ class MotorControl():
         is_trials_max.go_to_if(end, lambda:self.detach_trials > MotorControl.DETACH_TRIAL_MAX)\
             .do(lambda:[self._reset_direction(), logger.debug('Maximum end-detach trials reached.')])
         wait_start_sw_off.on_signal(self.start_switch_off).go_to(go)
-        go.do_on_entry(self._go_entry)
+        go.do_on_entry(lambda:self.motor.go(self.direction))
         go.on_timeout(self.drive_timeout_ms).do(lambda:logger.debug('Failed to close/open the door in time.')).go_to(end)
         
         self.state_machine.start()
@@ -99,9 +99,6 @@ class MotorControl():
         logger.debug('stopping motor')
         self.motor.stop()
         self._report_finished()
-
-    def _go_entry(self):
-        self.motor.go(self.direction)
 
     def _report_finished(self):
         for slot in self.finish_slots:
@@ -276,7 +273,7 @@ class DoorController():
 
     def battery_voltage_slot(self, voltage_v):
         self.battery_voltage_v = voltage_v
-        logger.debug(f'battery voltage = {voltage_v:.3f} V')
+        #logger.debug(f'battery voltage = {voltage_v:.3f} V')
 
     def motor_voltage(self):
         return self.battery_voltage_v
