@@ -573,6 +573,10 @@
       {
         "netclass": "signal",
         "pattern": "/light_sense_control"
+      },
+      {
+        "netclass": "Default",
+        "pattern": ""
       }
     ]
   },
