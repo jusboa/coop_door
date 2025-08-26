@@ -130,8 +130,8 @@ def test_hardware_wiring():
         Pin_mock.OUT = 333
         d = DoorController()
         Motor_mock.assert_called_once_with(14, 15, 9, d.motor_voltage)
-        EndSwitch_mock.has_calls([call(OPEN_END_SWITCH_PIN),
-                                  call(CLOSE_END_SWITCH_PIN)])
+        EndSwitch_mock.assert_has_calls([call(OPEN_END_SWITCH_PIN),
+                                         call(CLOSE_END_SWITCH_PIN)])
         LightSensor_mock.assert_called_once_with(28, 0)
         # Sleep pin
         Pin_mock.assert_called_once_with(22, 333)
@@ -145,7 +145,7 @@ def test_refresh_timer_config(door_controller, refresh_inputs_period_ms):
     with patch('coop_door.coop_door.door_controller.Timer') as Timer_mock:
         d = DoorController(refresh_inputs_period_ms)
         d.start()
-        Timer_mock.called_once()
+        Timer_mock.assert_called_once()
         assert Timer_mock.call_args.args[0] == refresh_inputs_period_ms
 
 def test_refresh_inputs(door_controller,
