@@ -34,9 +34,9 @@
         "other_text_thickness": 0.15,
         "other_text_upright": false,
         "pads": {
-          "drill": 4.0,
-          "height": 8.0,
-          "width": 8.0
+          "drill": 0.0,
+          "height": 0.4,
+          "width": 1.5
         },
         "silk_line_width": 0.15,
         "silk_text_italic": false,
@@ -483,11 +483,11 @@
       "Net-(Q4A-G)": "signal",
       "Net-(Q4B-G)": "signal",
       "Net-(R1-Pad1)": "power",
-      "Net-(U3-VCP)": "power",
-      "Net-(U3-VINT)": "power",
-      "Net-(U3-nSLEEP)": "signal",
       "Net-(U5-VDD)": "power",
-      "Net-(U5-VM)": "power"
+      "Net-(U5-VM)": "power",
+      "Net-(U6-VCP)": "power",
+      "Net-(U6-VINT)": "power",
+      "Net-(U6-~{SLEEP})": "signal"
     },
     "netclass_patterns": [
       {
