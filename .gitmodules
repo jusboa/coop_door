@@ -1,0 +1,3 @@
+[submodule "coop_door_hw"]
+	path = coop_door_hw
+	url = git@github.com:jusboa/coop_door_hw.git
