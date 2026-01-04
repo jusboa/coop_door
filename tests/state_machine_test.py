@@ -231,7 +231,7 @@ def test_time_limited_state_creates_timer(state_machine, states):
         timeout_expct = 300
         Timer_mock.SINGLE_SHOT = 999
         states['orange'].do_on_entry(lambda x=calls : calls.append('orange')).on_timeout(timeout_expct).go_to(states['green'])
-        assert Timer_mock.called_once()
+        Timer_mock.assert_called_once()
         assert Timer_mock.call_args.args[0] == timeout_expct
         assert Timer_mock.call_args.args[2] == Timer_mock.SINGLE_SHOT
         timeout_slot = Timer_mock.call_args.args[1]

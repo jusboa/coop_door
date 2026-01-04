@@ -1,15 +1,17 @@
+""" Control coop door. Close it in dark, open it in light. """
+import logging
+from machine import PWM, Pin, freq # pylint: disable=import-error
 from .dcmotor_drive import Motor
 from .light_sensor import LightSensor
 from .end_switch import EndSwitch
 from .state_machine import StateMachine, State, Signal, Choice
 from .timer import Timer
 from .battery_voltage_sensor import BatteryVoltageSensor
-from machine import PWM, Pin, mem32, freq
-import logging
 
 logger = logging.getLogger(__name__)
 
-class MotorControl():
+class DoorMoveController():
+    """ Control the motor on the way to the end stop. """
     DETACH_FROM_END_TIMEOUT_MS = 2000
     DETACH_TRIAL_MAX = 4
     def __init__(self, start_switch,
@@ -24,7 +26,7 @@ class MotorControl():
         self.finish_slots = []
         self.drive_timeout_ms = drive_timeout_ms
 
-        # @startuml{motor_control.png}
+        # @startuml{door_move_controller.png}
         # [*] --> idle
         # idle --> active : start_request
         # active --> idle : stop_request
@@ -59,7 +61,7 @@ class MotorControl():
         self.start_request = Signal('start_request')
         self.stop_request = Signal('stop_request')
 
-        self.state_machine = StateMachine('MotorControlStateMachine')
+        self.state_machine = StateMachine('DoorMoveControllerStateMachine')
 
         idle = State('idle', self.state_machine)
         self.state_machine.set_init_state(idle)
@@ -84,15 +86,22 @@ class MotorControl():
         is_start_switch_on.go_to_if(wait_start_sw_off, self.start_switch.is_on)
         is_start_switch_on.go_to_if(go, lambda:not self.start_switch.is_on())
         wait_start_sw_off.do_on_entry(lambda:self.motor.go(self.direction))
-        wait_start_sw_off.on_timeout(MotorControl.DETACH_FROM_END_TIMEOUT_MS)\
+        wait_start_sw_off.on_timeout(DoorMoveController.DETACH_FROM_END_TIMEOUT_MS)\
             .go_to(is_trials_max).do(lambda:[self._inc_detach_trials(), self._reverse_direction()])
-        is_trials_max.go_to_if(wait_start_sw_off, lambda:self.detach_trials <= MotorControl.DETACH_TRIAL_MAX)
-        is_trials_max.go_to_if(end, lambda:self.detach_trials > MotorControl.DETACH_TRIAL_MAX)\
-            .do(lambda:[self._reset_direction(), logger.debug('Maximum end-detach trials reached.')])
+        is_trials_max.go_to_if(
+            wait_start_sw_off,
+            lambda:self.detach_trials <= DoorMoveController.DETACH_TRIAL_MAX)
+        is_trials_max.go_to_if(
+            end,
+            lambda:self.detach_trials > DoorMoveController.DETACH_TRIAL_MAX)\
+                     .do(lambda:[self._reset_direction(),
+                                 logger.debug('Maximum end-detach trials reached.')])
         wait_start_sw_off.on_signal(self.start_switch_off).go_to(go)
         go.do_on_entry(lambda:self.motor.go(self.direction))
-        go.on_timeout(self.drive_timeout_ms).do(lambda:logger.debug('Failed to close/open the door in time.')).go_to(end)
-        
+        go.on_timeout(self.drive_timeout_ms)\
+          .do(lambda:logger.debug('Failed to close/open the door in time.'))\
+          .go_to(end)
+
         self.state_machine.start()
 
     def _end_entry(self):
@@ -117,49 +126,60 @@ class MotorControl():
         self.direction = self.default_direction
 
     def start_switch_slot(self, is_on):
-        if (is_on):
+        """ Start end switch state change slot """
+        if is_on:
             self.state_machine.send_signal(self.start_switch_on)
         else:
             self.state_machine.send_signal(self.start_switch_off)
 
     def stop_switch_slot(self, is_on):
-        if (is_on):
+        """ Stop end switch state change slot """
+        if is_on:
             self.state_machine.send_signal(self.stop_switch_on)
         else:
             self.state_machine.send_signal(self.stop_switch_off)
 
     def start(self):
+        """ Start the controller. """
         logger.debug('start')
         self.state_machine.send_signal(self.start_request)
 
     def stop(self):
+        """ Stop the controller. """
         logger.debug('stop')
         self.state_machine.send_signal(self.stop_request)
 
     def register_finish_slot(self, slot):
+        """ Register finished slot.
+        Slot is called when the controller stops.
+        """
         self.finish_slots.append(slot)
 
 class DoorController():
+    """ The door controller.
+    Open close the door using a dc motor based on open/close
+    end stop switches and a signal from a light sensor.
+    """
     def __init__(self, wake_up_period_ms=100,
                  door_move_timeout_ms=30000):
-        self.motor = Motor(14, 15, 9, self.motor_voltage)
+        motor = Motor(14, 15, 9, self.motor_voltage)
         self.light_sensor = LightSensor(28, 0)
         self.light_sensor.wakeup()
-        self.open_switch = EndSwitch(1)
-        self.close_switch = EndSwitch(2)
+        open_switch = EndSwitch(1)
+        close_switch = EndSwitch(2)
         self.light_sensor.register_light_slot(self.light_slot)
-        self.open_switch.register_slot(self.open_switch_slot)
-        self.close_switch.register_slot(self.close_switch_slot)
-        self.drive_open_controller = MotorControl(self.close_switch,
-                                                  self.open_switch,
-                                                  self.motor,
-                                                  -1,
-                                                  door_move_timeout_ms)
-        self.drive_close_controller = MotorControl(self.open_switch,
-                                                   self.close_switch,
-                                                   self.motor,
-                                                   +1,
-                                                   door_move_timeout_ms)
+        open_switch.register_slot(self.open_switch_slot)
+        close_switch.register_slot(self.close_switch_slot)
+        self.drive_open_controller = DoorMoveController(close_switch,
+                                                        open_switch,
+                                                        motor,
+                                                        -1,
+                                                        door_move_timeout_ms)
+        self.drive_close_controller = DoorMoveController(open_switch,
+                                                         close_switch,
+                                                         motor,
+                                                         +1,
+                                                         door_move_timeout_ms)
         self.sleep_pin = Pin(22, Pin.OUT)
         self.sleep_pin.value(0)
         self.voltage_sensor = BatteryVoltageSensor(26)
@@ -169,7 +189,7 @@ class DoorController():
         freq(48000000)
 
         # State Machine
-        # @startuml{door_controller.png} 
+        # @startuml{door_controller.png}
         # state start
         # [*] --> start
         # start --> day : light
@@ -246,6 +266,7 @@ class DoorController():
         self.state_machine.process_signal()
 
     def do_all(self):
+        """ Handle all signals accumulated so far. """
         anything_to_do = True
         while anything_to_do:
             self.drive_open_controller.state_machine.process_signal()
@@ -256,27 +277,32 @@ class DoorController():
                 or self.state_machine.anything_to_do()
 
     def light_slot(self, is_light):
-        if (is_light):
+        """ Slot called on light condition change. """
+        if is_light:
             self.state_machine.send_signal(self.light)
         else:
             self.state_machine.send_signal(self.dark)
 
     def open_switch_slot(self, is_on):
-        logger.debug(f'open switch = {is_on}')
+        """ Slot called on open end stop switch state change. """
+        logger.debug('open switch = %s', is_on)
         self.drive_open_controller.stop_switch_slot(is_on)
         self.drive_close_controller.start_switch_slot(is_on)
 
     def close_switch_slot(self, is_on):
-        logger.debug(f'close switch = {is_on}')
+        """ Slot called on close end stop switch state change. """
+        logger.debug('close switch = %s', is_on)
         self.drive_open_controller.start_switch_slot(is_on)
         self.drive_close_controller.stop_switch_slot(is_on)
 
     def battery_voltage_slot(self, voltage_v):
+        """ Slot called on battery voltage change. """
         self.battery_voltage_v = voltage_v
-        #logger.debug(f'battery voltage = {voltage_v:.3f} V')
 
     def motor_voltage(self):
+        """ Return the latest motor voltage [V]. """
         return self.battery_voltage_v
 
     def start(self):
+        """ Start the controller. """
         self.state_machine.start()
