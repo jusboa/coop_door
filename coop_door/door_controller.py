@@ -163,11 +163,11 @@ class DoorController():
     """
     def __init__(self, wake_up_period_ms=100,
                  door_move_timeout_ms=30000):
-        motor = Motor(14, 15, 9, self.motor_voltage)
-        self.light_sensor = LightSensor(28, 0)
+        motor = Motor(8, 9, 14, self.motor_voltage)
+        self.light_sensor = LightSensor(27, 28)
         self.light_sensor.wakeup()
-        open_switch = EndSwitch(1)
-        close_switch = EndSwitch(2)
+        open_switch = EndSwitch(7)
+        close_switch = EndSwitch(6)
         self.light_sensor.register_light_slot(self.light_slot)
         open_switch.register_slot(self.open_switch_slot)
         close_switch.register_slot(self.close_switch_slot)
@@ -181,7 +181,7 @@ class DoorController():
                                                          motor,
                                                          +1,
                                                          door_move_timeout_ms)
-        self.sleep_pin = Pin(22, Pin.OUT)
+        self.sleep_pin = Pin(18, Pin.OUT)
         self.sleep_pin.value(0)
         self.voltage_sensor = BatteryVoltageSensor(26)
         self.voltage_sensor.register_slot(self.battery_voltage_slot)

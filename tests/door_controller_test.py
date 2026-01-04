@@ -10,8 +10,8 @@ import sys
 sys.modules['machine'] = MagicMock()
 from ..coop_door.door_controller import DoorController
 
-OPEN_END_SWITCH_PIN = 1
-CLOSE_END_SWITCH_PIN = 2
+OPEN_END_SWITCH_PIN = 7
+CLOSE_END_SWITCH_PIN = 6
 
 @pytest.fixture()
 def motor_mock():
@@ -129,12 +129,12 @@ def test_hardware_wiring():
           patch('coop_door.coop_door.door_controller.BatteryVoltageSensor') as VoltageSensor_mock):
         Pin_mock.OUT = 333
         d = DoorController()
-        Motor_mock.assert_called_once_with(14, 15, 9, d.motor_voltage)
+        Motor_mock.assert_called_once_with(8, 9, 14, d.motor_voltage)
         EndSwitch_mock.assert_has_calls([call(OPEN_END_SWITCH_PIN),
-                                         call(CLOSE_END_SWITCH_PIN)])
-        LightSensor_mock.assert_called_once_with(28, 0)
+                                  call(CLOSE_END_SWITCH_PIN)])
+        LightSensor_mock.assert_called_once_with(27, 28)
         # Sleep pin
-        Pin_mock.assert_called_once_with(22, 333)
+        Pin_mock.assert_called_once_with(18, 333)
         VoltageSensor_mock.assert_called_once_with(26)
 
 def test_light_sensor_is_woken_up_on_init(door_controller,
