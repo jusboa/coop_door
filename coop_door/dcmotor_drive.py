@@ -46,8 +46,7 @@ class Motor():
 
     def _v_to_duty(self, volts):
         duty = round(Motor.DUTY_MAX * Motor.VOLTAGE_NOMINAL_V / volts)
-        if duty > Motor.DUTY_MAX:
-            duty = Motor.DUTY_MAX
+        duty = min(duty, Motor.DUTY_MAX)
         return duty
 
     def go(self, direction):

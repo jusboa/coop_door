@@ -11,12 +11,14 @@ from .battery_voltage_sensor import BatteryVoltageSensor
 logger = logging.getLogger(__name__)
 
 class DoorMoveController():
+    # pylint: disable=too-many-instance-attributes
     """ Control the motor on the way to the end stop. """
     DETACH_FROM_END_TIMEOUT_MS = 2000
     DETACH_TRIAL_MAX = 4
     def __init__(self, start_switch,
                  stop_switch, motor,
                  direction, drive_timeout_ms):
+        # pylint: disable=too-many-arguments
         self.start_switch = start_switch
         self.stop_switch = stop_switch
         self.motor = motor
@@ -156,6 +158,7 @@ class DoorMoveController():
         self.finish_slots.append(slot)
 
 class DoorController():
+    # pylint: disable=too-many-instance-attributes
     """ The door controller.
     Open close the door using a dc motor based on open/close
     end stop switches and a signal from a light sensor.

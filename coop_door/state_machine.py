@@ -44,6 +44,7 @@ class Transition():
         return self
 
 class State():
+    # pylint: disable=too-many-instance-attributes
     """ Finite state machine state.
     Hook the transition to another state.
     Define entry, exit, timeout actions.
