@@ -15,12 +15,10 @@ class DoorMoveController():
     """ Control the motor on the way to the end stop. """
     DETACH_FROM_END_TIMEOUT_MS = 2000
     DETACH_TRIAL_MAX = 4
-    def __init__(self, start_switch,
-                 stop_switch, motor,
+    def __init__(self, end_sw, motor,
                  direction, drive_timeout_ms):
-        # pylint: disable=too-many-arguments
-        self.start_switch = start_switch
-        self.stop_switch = stop_switch
+        self.start_switch = end_sw['start']
+        self.stop_switch = end_sw['stop']
         self.motor = motor
         self.default_direction = direction
         self.direction = direction
@@ -173,13 +171,13 @@ class DoorController():
         self.light_sensor.register_light_slot(self.light_slot)
         open_switch.register_slot(self.open_switch_slot)
         close_switch.register_slot(self.close_switch_slot)
-        self.drive_open_controller = DoorMoveController(close_switch,
-                                                        open_switch,
+        self.drive_open_controller = DoorMoveController({'start' : close_switch,
+                                                         'stop' : open_switch},
                                                         motor,
                                                         -1,
                                                         door_move_timeout_ms)
-        self.drive_close_controller = DoorMoveController(open_switch,
-                                                         close_switch,
+        self.drive_close_controller = DoorMoveController({'start' : open_switch,
+                                                          'stop' : close_switch},
                                                          motor,
                                                          +1,
                                                          door_move_timeout_ms)
