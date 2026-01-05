@@ -1,7 +1,10 @@
 """ Chicken coop-door main module. """
 import logging
 import sys
-from .coop_door.door_controller import DoorController
+ # The following import cannot be related to the parent coop_door
+ # nor it can be relative due to specific micropython folder structure
+ # pylint: disable=no-name-in-module, import-error
+from coop_door.door_controller import DoorController
 
 root_logger = logging.getLogger()
 formatter = logging.Formatter('[%(levelname)s]\t(+%(msecs)s) %(name)s %(message)s')

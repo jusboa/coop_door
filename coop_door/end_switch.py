@@ -24,7 +24,7 @@ class EndSwitch:
         """ Perform end switch reading. """
         for slot in self.slots:
             if self.is_on() is not self.last_state:
-                logger.debug('end switch@%d = %s', self.pin, self.is_on())
+                logger.debug('end switch@%s = %s', self.pin, self.is_on())
                 slot(self.is_on())
         self.last_state = self.is_on()
 
