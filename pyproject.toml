@@ -15,7 +15,7 @@ lint = [
     "pylint>=2.17,<4",
 ]
 deploy = [
-    "mpr>=1.34,<2",
+    "mpremote>=1.25,<2",
 ]
 
 [tool.uv]

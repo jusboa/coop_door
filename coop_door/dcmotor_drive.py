@@ -23,22 +23,32 @@ class Motor():
         pin1 = Pin(gpio1, Pin.OUT)
         self.enable_pin = Pin(gpio_en, Pin.OUT)
         self.drive = [PWM(pin0), PWM(pin1)]
+        for pwm in self.drive:
+            pwm.init(freq=Motor.FREQ_HZ, duty_u16=0)
+        self.enable_pin.value(False)
         self.voltage_callback = voltage_callback
         self.duty = 0
+        self._applied_direction = 0
+        self._applied_duty = 0
 
     def _drive(self):
+        if (self._direction == self._applied_direction and
+                self.duty == self._applied_duty):
+            return
+
         self.enable_pin.value(self._direction != 0)
         if self._direction > 0:
-            self.drive[0].init(freq=Motor.FREQ_HZ,
-                               duty_u16=self.duty)
-            self.drive[1].init(freq=Motor.FREQ_HZ, duty_u16=0)
+            self.drive[0].duty_u16(Motor.DUTY_MAX - self.duty)
+            self.drive[1].duty_u16(Motor.DUTY_MAX)
         elif self._direction < 0:
-            self.drive[0].init(freq=Motor.FREQ_HZ, duty_u16=0)
-            self.drive[1].init(freq=Motor.FREQ_HZ,
-                               duty_u16=self.duty)
+            self.drive[0].duty_u16(Motor.DUTY_MAX)
+            self.drive[1].duty_u16(Motor.DUTY_MAX - self.duty)
         else:
-            self.drive[0].init(freq=Motor.FREQ_HZ, duty_u16=0)
-            self.drive[1].init(freq=Motor.FREQ_HZ, duty_u16=0)
+            for pwm in self.drive:
+                pwm.duty_u16(0)
+
+        self._applied_direction = self._direction
+        self._applied_duty = self.duty
 
     def _is_voltage_ok(self, v):
         return v is not None and \

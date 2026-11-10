@@ -10,21 +10,6 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "argparse-from-file"
-version = "1.9"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "platformdirs", version = "4.3.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
-    { name = "platformdirs", version = "4.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
-    { name = "platformdirs", version = "4.12.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
-    { name = "platformdirs", version = "4.14.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/d0/bd/9252c6fbf41be44a544022cc1b0f7ab3fb6b63191a0171e1c1f7a82b7f4f/argparse_from_file-1.9.tar.gz", hash = "sha256:95aa7a80171f12ddf0e948d470844904c02366ebe8347b3f97d0e57fbf542fe2", size = 5688, upload-time = "2026-10-06T21:51:45.915Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/9a/1b/abead119f9b61c81919cf7fb138e715ca4c7eb8f58ab5cc4153f9dd1544e/argparse_from_file-1.9-py3-none-any.whl", hash = "sha256:962ffcb025633fad581aea773c9a3f54629ee252fee5f3346f2735f1952497ae", size = 5254, upload-time = "2026-10-06T21:51:44.592Z" },
-]
-
-[[package]]
 name = "astroid"
 version = "3.2.4"
 source = { registry = "https://pypi.org/simple" }
@@ -73,7 +58,8 @@ source = { virtual = "." }
 
 [package.dev-dependencies]
 deploy = [
-    { name = "mpr" },
+    { name = "mpremote", version = "1.25.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "mpremote", version = "1.29.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
 lint = [
     { name = "flake8", version = "7.1.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
@@ -94,7 +80,7 @@ test = [
 [package.metadata]
 
 [package.metadata.requires-dev]
-deploy = [{ name = "mpr", specifier = ">=1.34,<2" }]
+deploy = [{ name = "mpremote", specifier = ">=1.25,<2" }]
 lint = [
     { name = "flake8", specifier = ">=7,<8" },
     { name = "pylint", specifier = ">=2.17,<4" },
@@ -253,15 +239,6 @@ wheels = [
 ]
 
 [[package]]
-name = "inotify-simple"
-version = "2.0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e3/5c/bfe40e15d684bc30b0073aa97c39be410a5fbef3d33cad6f0bf2012571e0/inotify_simple-2.0.1.tar.gz", hash = "sha256:f010bbbd8283bd71a9f4eb2de94765804ede24bd47320b0e6ef4136e541cdc2c", size = 7101, upload-time = "2025-08-25T06:28:20.998Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e3/86/8be1ac7e90f80b413e81f1e235148e8db771218886a2353392f02da01be3/inotify_simple-2.0.1-py3-none-any.whl", hash = "sha256:e5da495f2064889f8e68b67f9358b0d102e03b783c2d42e5b8e132ab859a5d8a", size = 7449, upload-time = "2025-08-25T06:28:19.919Z" },
-]
-
-[[package]]
 name = "isort"
 version = "5.13.2"
 source = { registry = "https://pypi.org/simple" }
@@ -301,20 +278,39 @@ wheels = [
 ]
 
 [[package]]
-name = "mpr"
-version = "1.35"
+name = "mpremote"
+version = "1.25.0"
 source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.9'",
+]
 dependencies = [
-    { name = "argparse-from-file" },
-    { name = "inotify-simple", marker = "sys_platform == 'linux'" },
-    { name = "platformdirs", version = "4.3.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "pyserial", marker = "python_full_version < '3.9'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/86/1d/4a194eb385133349954cbf269e673e59e28b9510c7805e955da1cd32f4c6/mpremote-1.25.0.tar.gz", hash = "sha256:d0dcd8ab364d87270e1766308882e536e541052efd64aadaac83bc7ebbea2815", size = 29082, upload-time = "2025-04-15T14:38:04.012Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ff/77/d43d7bf9aa637c7b2788c48fc4eb131a9bb4cb24568297453c2537fd621d/mpremote-1.25.0-py3-none-any.whl", hash = "sha256:42691ff8f7ea4b5f2fc1b51de99609995d383671a4b4d4daad8cbd486d26aa23", size = 33555, upload-time = "2025-04-15T14:38:02.68Z" },
+]
+
+[[package]]
+name = "mpremote"
+version = "1.29.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.12'",
+    "python_full_version == '3.11.*'",
+    "python_full_version == '3.10.*'",
+    "python_full_version == '3.9.*'",
+]
+dependencies = [
     { name = "platformdirs", version = "4.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
     { name = "platformdirs", version = "4.12.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
     { name = "platformdirs", version = "4.14.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pyserial", marker = "python_full_version >= '3.9'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e0/2f/0b4c940cc3df40822ad7aadb25dba2ff0220dc572e2834d2996b846f9a3e/mpr-1.35.tar.gz", hash = "sha256:9c2ddb09ce9b2ed27f1b377759ac52dcda4115ac18390c8aee01c911e4221e0c", size = 42215, upload-time = "2026-10-15T03:42:43.868Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ac/b7/8c44eb606b0e53517fd6ddda3f598b3bdb180c181f4e0bcbb9b7743f4cb5/mpremote-1.29.0.tar.gz", hash = "sha256:ab0b6f21059698e573ca076fe9a0299e5fe7bbc3ca3f5b2f00007e22e51c7b80", size = 33808, upload-time = "2026-08-24T13:54:53.108Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/72/b0/b0715ec0748f330f8f6d8ab8ba4b30a6028c0da2600606731b8edb0af78c/mpr-1.35-py3-none-any.whl", hash = "sha256:336fdbf4a7bc5e742057d2cba936c2dc95063f4efedf52135dcd5078a875844f", size = 24124, upload-time = "2026-10-15T03:42:42.462Z" },
+    { url = "https://files.pythonhosted.org/packages/51/85/f68fbcfe4d1ce32a7f2154a48f68195d4f256e3700b69ad0d5b758ee3b37/mpremote-1.29.0-py3-none-any.whl", hash = "sha256:dedac688bcd65b9d4d5b7a66119332f2830000088321107994959333f53e41c8", size = 38653, upload-time = "2026-08-24T13:54:51.674Z" },
 ]
 
 [[package]]
@@ -576,6 +572,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/04/9d/81c84a312d1fa8133b0db0c76148542a98349298a01747ab122f9314b04e/pylint-3.3.9.tar.gz", hash = "sha256:d312737d7b25ccf6b01cc4ac629b5dcd14a0fcf3ec392735ac70f137a9d5f83a", size = 1525946, upload-time = "2025-10-05T18:41:43.786Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1a/a7/69460c4a6af7575449e615144aa2205b89408dc2969b87bc3df2f262ad0b/pylint-3.3.9-py3-none-any.whl", hash = "sha256:01f9b0462c7730f94786c283f3e52a1fbdf0494bbe0971a78d7277ef46a751e7", size = 523465, upload-time = "2025-10-05T18:41:41.766Z" },
+]
+
+[[package]]
+name = "pyserial"
+version = "3.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1e/7d/ae3f0a63f41e4d2f6cb66a5b57197850f919f59e558159a4dd3a818f5082/pyserial-3.5.tar.gz", hash = "sha256:3c77e014170dfffbd816e6ffc205e9842efb10be9f58ec16d3e8675b4925cddb", size = 159125, upload-time = "2020-11-23T03:59:15.045Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/bc/587a445451b253b285629263eb51c2d8e9bcea4fc97826266d186f96f558/pyserial-3.5-py2.py3-none-any.whl", hash = "sha256:c4451db6ba391ca6ca299fb3ec7bae67a5c55dde170964c7a14ceefec02f2cf0", size = 90585, upload-time = "2020-11-23T03:59:13.41Z" },
 ]
 
 [[package]]

@@ -1,6 +1,6 @@
-uv run --locked --no-default-groups --group deploy -- mpr -v rmd --rf /
-uv run --locked --no-default-groups --group deploy -- mpr -v mkdir coop_door
-uv run --locked --no-default-groups --group deploy -- mpr -v put coop_door/*.py coop_door/
-uv run --locked --no-default-groups --group deploy -- mpr -v put __init__.py main.py /
-uv run --locked --no-default-groups --group deploy -- mpr -v mip install logging
-uv run --locked --no-default-groups --group deploy -- mpr -v reset
+uv run --locked --no-default-groups --group deploy -- mpremote fs mkdir :coop_door
+# Expand the source glob in the local shell before invoking mpremote.
+uv run --locked --no-default-groups --group deploy -- mpremote fs cp coop_door/*.py :coop_door/
+uv run --locked --no-default-groups --group deploy -- mpremote fs cp __init__.py main.py :/
+uv run --locked --no-default-groups --group deploy -- mpremote mip install logging
+uv run --locked --no-default-groups --group deploy -- mpremote soft-reset

@@ -22,7 +22,7 @@ Connect the Pico, then run the deployment script from the repository root:
 uv run --locked --no-default-groups --group deploy bash install.sh
 ```
 
-The script uses `mpr` from the deployment dependency group to copy the MicroPython files and install the device-side `logging` module with MIP. `mip` is run on the device; it is not a host dependency.
+The script uses `mpremote` from the deployment dependency group to copy the MicroPython files and install the device-side `logging` module with MIP. `mip` is run on the device; it is not a host dependency.
 
 The project intentionally uses uv's non-package mode: the MicroPython application is copied to the device, not installed as a host Python package.
 
