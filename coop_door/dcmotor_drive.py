@@ -17,7 +17,6 @@ class Motor():
                  gpio0, gpio1,
                  gpio_en,
                  voltage_callback):
-        self.drive_value = [False, False]
         self._direction = 0
         pin0 = Pin(gpio0, Pin.OUT)
         pin1 = Pin(gpio1, Pin.OUT)
