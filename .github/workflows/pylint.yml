@@ -19,6 +19,8 @@ jobs:
       with:
         enable-cache: true
     - name: Install dependencies
-      run: uv sync --locked --no-default-groups --group lint
+      run: uv sync --locked --no-default-groups --group test --group lint
+    - name: Run unit tests
+      run: uv run --locked --group test pytest
     - name: Analysing the code with pylint
       run: uv run --locked --group lint pylint $(git ls-files '[^tests]*.py')
