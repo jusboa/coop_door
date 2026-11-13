@@ -15,7 +15,10 @@ CLOSE_END_SWITCH_PIN = 6
 
 @pytest.fixture()
 def motor_mock():
-    return MagicMock()
+    mock = MagicMock()
+    mock.is_running.return_value = False
+    mock.direction.return_value = 1
+    return mock
 
 @pytest.fixture
 def light_sensor_mock():
@@ -62,6 +65,10 @@ def voltage_sensor_mock():
     return MagicMock()
 
 @pytest.fixture
+def current_sensor_mock():
+    return MagicMock()
+
+@pytest.fixture
 def refresh_inputs_period_ms():
     return 123
 
@@ -80,6 +87,7 @@ def door_controller_factory(light_sensor_mock,
                             timer_mock_factory,
                             sleep_pin_mock,
                             voltage_sensor_mock,
+                            current_sensor_mock,
                             refresh_inputs_period_ms,
                             timer_mock,
                             motor_drive_timeout_ms):
@@ -90,9 +98,11 @@ def door_controller_factory(light_sensor_mock,
               patch('coop_door.coop_door.state_machine.Timer') as StateTimer_mock,
               patch('coop_door.coop_door.door_controller.Pin') as Pin_mock,
               patch('coop_door.coop_door.door_controller.BatteryVoltageSensor') as VoltageSensor_mock,
+              patch('coop_door.coop_door.door_controller.MotorCurrentSensor') as CurrentSensor_mock,
               patch('coop_door.coop_door.door_controller.Timer') as Timer_mock):
             Timer_mock.return_value = timer_mock
             VoltageSensor_mock.return_value = voltage_sensor_mock
+            CurrentSensor_mock.return_value = current_sensor_mock
             Motor_mock.return_value = motor_mock
             LightSensor_mock.return_value = light_sensor_mock
             Pin_mock.return_value = sleep_pin_mock
@@ -126,16 +136,18 @@ def test_hardware_wiring():
           patch('coop_door.coop_door.door_controller.LightSensor') as LightSensor_mock,
           patch('coop_door.coop_door.door_controller.EndSwitch') as EndSwitch_mock,
           patch('coop_door.coop_door.door_controller.Pin') as Pin_mock,
-          patch('coop_door.coop_door.door_controller.BatteryVoltageSensor') as VoltageSensor_mock):
+          patch('coop_door.coop_door.door_controller.BatteryVoltageSensor') as VoltageSensor_mock,
+          patch('coop_door.coop_door.door_controller.MotorCurrentSensor') as CurrentSensor_mock):
         Pin_mock.OUT = 333
         d = DoorController()
         Motor_mock.assert_called_once_with(8, 9, 14, d.motor_voltage)
         EndSwitch_mock.assert_has_calls([call(OPEN_END_SWITCH_PIN),
                                   call(CLOSE_END_SWITCH_PIN)])
-        LightSensor_mock.assert_called_once_with(27, 28)
+        LightSensor_mock.assert_called_once_with(27, 20)
         # Sleep pin
         Pin_mock.assert_called_once_with(18, 333)
         VoltageSensor_mock.assert_called_once_with(26)
+        CurrentSensor_mock.assert_called_once_with(adc_pin_num=28)
 
 def test_light_sensor_is_woken_up_on_init(door_controller,
                                           light_sensor_mock):
@@ -170,6 +182,72 @@ def test_register_close_end_switch_slot(door_controller, close_end_switch_mock):
 
 def test_voltage_sensor_slot(door_controller, voltage_sensor_mock):
     voltage_sensor_mock.register_slot.assert_called_once_with(door_controller.battery_voltage_slot)
+
+
+def test_motor_current_slot_registration(door_controller, current_sensor_mock):
+    current_sensor_mock.register_slot.assert_called_once_with(door_controller.motor_current_slot)
+
+
+def test_register_motor_current_slot(door_controller, current_sensor_mock):
+    callback = MagicMock()
+    door_controller.register_motor_current_slot(callback)
+    current_sensor_mock.register_slot.assert_called_with(callback)
+    door_controller.motor_current_slot(1.25)
+    assert door_controller.motor_current_a == 1.25
+    callback.assert_not_called()  # sensor owns and invokes consumer slots
+
+
+def test_wakeup_samples_current_only_while_motor_running(
+        door_controller, motor_mock, current_sensor_mock):
+    motor_mock.is_running.return_value = True
+    motor_mock.direction.return_value = -1
+
+    door_controller._wakeup()
+
+    current_sensor_mock.read.assert_called_once_with(current_into_in_plus=False)
+
+
+def test_wakeup_does_not_sample_current_when_motor_stopped(
+        door_controller, motor_mock, current_sensor_mock):
+    motor_mock.is_running.return_value = False
+
+    door_controller._wakeup()
+
+    current_sensor_mock.read.assert_not_called()
+
+
+@pytest.mark.parametrize(('direction', 'current_into_in_plus'), [
+    (+1, True),
+    (-1, False),
+])
+def test_motor_current_sign_uses_fixed_logical_direction_mapping(
+        door_controller, motor_mock, current_sensor_mock,
+        direction, current_into_in_plus):
+    motor_mock.is_running.return_value = True
+    motor_mock.direction.return_value = direction
+
+    door_controller._wakeup()
+
+    current_sensor_mock.read.assert_called_once_with(
+        current_into_in_plus=current_into_in_plus)
+
+
+def test_motor_current_positive_direction_parameter_is_not_supported():
+    with pytest.raises(TypeError):
+        DoorController(motor_current_positive_direction=-1)
+
+
+def test_forward_current_to_registered_consumer(door_controller, current_sensor_mock):
+    callback = MagicMock()
+    door_controller.register_motor_current_slot(callback)
+    current_sensor_mock.register_slot.assert_called_with(callback)
+
+    # Emulate the sensor notifying all its registered slots after a reading.
+    for registration in current_sensor_mock.register_slot.call_args_list:
+        registration.args[0](0.75)
+
+    assert door_controller.motor_current_a == 0.75
+    callback.assert_called_once_with(0.75)
     
 def test_day_on_power_up_open_door(door_controller_factory,
                                    open_end_switch_mock,

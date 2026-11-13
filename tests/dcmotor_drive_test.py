@@ -67,15 +67,15 @@ def test_pwm_initialized_once_at_startup(motor, pwm_mock, freq_hz):
 
 def test_drive_forward(motor, pwm_mock):
     motor.go(+1)
-    pwm_mock[0].duty_u16.assert_called_once_with(0)
-    pwm_mock[1].duty_u16.assert_called_once_with(Motor.DUTY_MAX)
+    pwm_mock[0].duty_u16.assert_called_once_with(Motor.DUTY_MAX)
+    pwm_mock[1].duty_u16.assert_called_once_with(0)
     for pwm in pwm_mock:
         pwm.init.assert_called_once_with(freq=Motor.FREQ_HZ, duty_u16=0)
 
 def test_drive_backward(motor, pwm_mock):
     motor.go(-1)
-    pwm_mock[0].duty_u16.assert_called_once_with(Motor.DUTY_MAX)
-    pwm_mock[1].duty_u16.assert_called_once_with(0)
+    pwm_mock[0].duty_u16.assert_called_once_with(0)
+    pwm_mock[1].duty_u16.assert_called_once_with(Motor.DUTY_MAX)
     for pwm in pwm_mock:
         pwm.init.assert_called_once_with(freq=Motor.FREQ_HZ, duty_u16=0)
 
@@ -126,13 +126,13 @@ def test_pwm(motor, pwm_mock, voltage_callback):
         pwm_mock[0].duty_u16.reset_mock()
         pwm_mock[1].duty_u16.reset_mock()
         motor.go(+1)
-        pwm_mock[0].duty_u16.assert_called_once_with(Motor.DUTY_MAX - duty)
-        pwm_mock[1].duty_u16.assert_called_once_with(Motor.DUTY_MAX)
+        pwm_mock[0].duty_u16.assert_called_once_with(Motor.DUTY_MAX)
+        pwm_mock[1].duty_u16.assert_called_once_with(Motor.DUTY_MAX - duty)
         pwm_mock[0].duty_u16.reset_mock()
         pwm_mock[1].duty_u16.reset_mock()
         motor.go(-1)
-        pwm_mock[0].duty_u16.assert_called_once_with(Motor.DUTY_MAX)
-        pwm_mock[1].duty_u16.assert_called_once_with(Motor.DUTY_MAX - duty)
+        pwm_mock[0].duty_u16.assert_called_once_with(Motor.DUTY_MAX - duty)
+        pwm_mock[1].duty_u16.assert_called_once_with(Motor.DUTY_MAX)
         for pwm in pwm_mock:
             pwm.init.assert_called_once_with(freq=Motor.FREQ_HZ, duty_u16=0)
 
@@ -157,9 +157,9 @@ def test_drive_skips_when_stopped_twice(motor, pwm_mock):
 def test_pwm_max(motor, pwm_mock, voltage_callback):
     voltage_callback.return_value = 5.9
     motor.go(+1)
-    pwm_mock[0].duty_u16.assert_called_once_with(
+    pwm_mock[0].duty_u16.assert_called_once_with(Motor.DUTY_MAX)
+    pwm_mock[1].duty_u16.assert_called_once_with(
         Motor.DUTY_MAX - motor.duty)
-    pwm_mock[1].duty_u16.assert_called_once_with(Motor.DUTY_MAX)
 
 def test_voltage_low(motor, pwm_mock, voltage_callback):
     voltage_callback.return_value = 3.9

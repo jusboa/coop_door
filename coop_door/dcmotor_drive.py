@@ -37,11 +37,11 @@ class Motor():
 
         self.enable_pin.value(self._direction != 0)
         if self._direction > 0:
-            self.drive[0].duty_u16(Motor.DUTY_MAX - self.duty)
-            self.drive[1].duty_u16(Motor.DUTY_MAX)
-        elif self._direction < 0:
             self.drive[0].duty_u16(Motor.DUTY_MAX)
             self.drive[1].duty_u16(Motor.DUTY_MAX - self.duty)
+        elif self._direction < 0:
+            self.drive[0].duty_u16(Motor.DUTY_MAX - self.duty)
+            self.drive[1].duty_u16(Motor.DUTY_MAX)
         else:
             for pwm in self.drive:
                 pwm.duty_u16(0)

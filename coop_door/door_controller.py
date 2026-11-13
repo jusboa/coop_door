@@ -7,6 +7,7 @@ from .end_switch import EndSwitch
 from .state_machine import StateMachine, State, Signal, Choice
 from .timer import Timer
 from .battery_voltage_sensor import BatteryVoltageSensor
+from .motor_current_sensor import MotorCurrentSensor
 
 logger = logging.getLogger(__name__)
 
@@ -156,15 +157,24 @@ class DoorMoveController():
         self.finish_slots.append(slot)
 
 class DoorController():
+    # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-statements
     # pylint: disable=too-many-instance-attributes
     """ The door controller.
     Open close the door using a dc motor based on open/close
     end stop switches and a signal from a light sensor.
     """
     def __init__(self, wake_up_period_ms=100,
-                 door_move_timeout_ms=30000):
-        motor = Motor(8, 9, 14, self.motor_voltage)
-        self.light_sensor = LightSensor(27, 28)
+                 door_move_timeout_ms=30000,
+                 motor_current_adc_pin=28,
+                 light_sensor_enable_pin=20):
+        """Create the controller.
+
+        GPIO28 is the current-sense ADC input. The light-sensor enable output
+        defaults to GPIO20 to avoid that ADC/output pin conflict; boards wired
+        with a different enable pin can override it.
+        """
+        self.motor = Motor(8, 9, 14, self.motor_voltage)
+        self.light_sensor = LightSensor(27, light_sensor_enable_pin)
         self.light_sensor.wakeup()
         open_switch = EndSwitch(7)
         close_switch = EndSwitch(6)
@@ -173,12 +183,12 @@ class DoorController():
         close_switch.register_slot(self.close_switch_slot)
         self.drive_open_controller = DoorMoveController({'start' : close_switch,
                                                          'stop' : open_switch},
-                                                        motor,
+                                                        self.motor,
                                                         -1,
                                                         door_move_timeout_ms)
         self.drive_close_controller = DoorMoveController({'start' : open_switch,
                                                           'stop' : close_switch},
-                                                         motor,
+                                                         self.motor,
                                                          +1,
                                                          door_move_timeout_ms)
         self.sleep_pin = Pin(18, Pin.OUT)
@@ -186,6 +196,9 @@ class DoorController():
         self.voltage_sensor = BatteryVoltageSensor(26)
         self.voltage_sensor.register_slot(self.battery_voltage_slot)
         self.battery_voltage_v = None
+        self.current_sensor = MotorCurrentSensor(adc_pin_num=motor_current_adc_pin)
+        self.current_sensor.register_slot(self.motor_current_slot)
+        self.motor_current_a = None
 
         freq(48000000)
 
@@ -262,6 +275,12 @@ class DoorController():
     def _wakeup(self):
         self.light_sensor.read()
         self.voltage_sensor.read()
+        if self.motor.is_running():
+            # Logical motor direction +1 is defined as current OUT1->OUT2.
+            # Select the sensor polarity so this direction is reported positive
+            # and sensing reference is properly set.
+            current_into_in_plus = self.motor.direction() == 1
+            self.current_sensor.read(current_into_in_plus=current_into_in_plus)
         self.drive_open_controller.state_machine.process_signal()
         self.drive_close_controller.state_machine.process_signal()
         self.state_machine.process_signal()
@@ -303,6 +322,15 @@ class DoorController():
     def motor_voltage(self):
         """ Return the latest motor voltage [V]. """
         return self.battery_voltage_v
+
+    def motor_current_slot(self, current_a):
+        """Slot called with each motor-current reading in amperes."""
+        self.motor_current_a = current_a
+        logger.debug('motor current = %.3f A', current_a)
+
+    def register_motor_current_slot(self, slot):
+        """Register a callback receiving motor current in amperes."""
+        self.current_sensor.register_slot(slot)
 
     def start(self):
         """ Start the controller. """
